@@ -84,7 +84,7 @@ void dealloc_matrix(MATRIX mat) {
 extern void max_vector_32(VECTOR x, int n, type* max);
 extern void euclidian_distance_32(MATRIX x,int offset,VECTOR y,int d,type* dist);
 extern void eval_f_32(MATRIX x, int d, VECTOR c, int offset,type* quad, type* scalar);
-
+extern void compute_avg_32(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris);
 MATRIX load_data(char* filename, int *n, int *k) {
 	FILE* fp;
 	int rows, cols, status, i;
@@ -209,7 +209,14 @@ void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, MATRIX num_2,
 }
 
 void volitive_movement(params* input, support* sup) {
-    compute_weighted_avg(input->np, input->d, sup->V, input->x, sup->W, sup->w_sum);
+
+
+    for(int i=0;i<input->d;++i)
+    	sup->V[i]=0;
+    compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
+//    compute_weighted_avg(input->np, input->d, sup->V, input->x, sup->W, sup->w_sum);
+//    for(int i=0;i<input->d;++i)
+//    	printf(" nasm %f\n",sup->V[i]);
 	type sgn = (sup->delta_w >= 0) ? -1 : 1;
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;

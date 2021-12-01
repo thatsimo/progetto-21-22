@@ -121,6 +121,7 @@ end_euc:
     movss   [eax],xmm0
     
     stop
+    
 
 section .data
 	
@@ -212,6 +213,92 @@ forino_exp:
      
      
      stop 
+ 
+ 
+ 
+ 
+ 
+;compute_avg_32(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris)
+section .data
+section .bss
+section .text
+
+global compute_avg_32
+    x_w equ 8
+    np_w equ 12
+    d_w equ 16
+    c_w equ  20
+    den_w equ 24
+    ris_w equ 28
    
+compute_avg_32:
+
+    start
+    
+    mov eax,[ebp+x_w]              ; x
+    mov ebx,[ebp+c_w]              ; c
+    mov ecx,[ebp+d_w]              ; d
+    movd xmm5,esp
+    mov esp,[ebp+ris_w]
+    
+    
+    movss xmm0,[ebp+den_w]
+    shufps xmm0,xmm0,00000000b    ; den
+    
+    
+    
+    mov esi,0                     ; i=0
+    
+foriw: 
+    mov edi,0                     ; j=0
+    movss xmm7,[ebx+esi*4]
+    shufps xmm7,xmm7,00000000b
+    divps xmm7,xmm0
+    mov edx,1
+    imul edx,ecx
+    imul edx,esi
+    sub ecx,3
+forjw:
+    add edx,edi
+    movaps xmm1,[eax+edx*4]
+    sub edx,edi
+    mulps xmm1,xmm7
+    addps xmm1,[esp+edi*4]
+    movaps [esp+edi*4],xmm1
+    
+    add edi, 4
+    cmp edi,ecx
+    jl forjw
+    
+    add ecx,3
+    
+    cmp edi,ecx
+    jge endforjw
+    
+forinow:
+    add edx,edi
+    movss xmm1,[eax+edx*4]
+    sub edx,edi
+    mulss xmm1,xmm7
+    addss xmm1,[esp+edi*4]
+    movaps [esp+edi*4],xmm1
+    
+    inc edi
+    cmp edi,ecx
+    jl forinow
+    
+endforjw:
+    
+    inc esi
+    cmp esi,[ebp+np_w]
+    jl foriw
+    
+    
+
+    movd esp,xmm5
+    
+    
+    stop 
+
     
 
