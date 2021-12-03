@@ -85,6 +85,8 @@ extern void max_vector_32(VECTOR x, int n, type* max);
 extern void euclidian_distance_32(MATRIX x,int offset,VECTOR y,int d,type* dist);
 extern void eval_f_32(MATRIX x, int d, VECTOR c, int offset,type* quad, type* scalar);
 extern void compute_avg_32(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris);
+extern void vector_sum_32(MATRIX x, int offset, int n,VECTOR V);
+
 MATRIX load_data(char* filename, int *n, int *k) {
 	FILE* fp;
 	int rows, cols, status, i;
@@ -210,7 +212,6 @@ void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, MATRIX num_2,
 
 void volitive_movement(params* input, support* sup) {
 
-
     for(int i=0;i<input->d;++i)
     	sup->V[i]=0;
     compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
@@ -229,10 +230,16 @@ void volitive_movement(params* input, support* sup) {
 
 void instincitve_movement(params* input, support* sup) {
 	compute_weighted_avg(input->np, input->d, sup->V, sup->delta_x, sup->delta_f, sup->f_sum);
-	for (int i = 0; i < input->np; ++i)
-		// DA FARE IN NASM
-		for (int j = 0; j < input->d; j++)
-			input->x[i*input->d+j] = input->x[i*input->d+j] + sup->V[j];
+	int d=input->d;
+	int np=input->np;
+	for (int i = 0; i < np-3; i+=4) {
+		vector_sum_32(input->x,i*d,d,sup->V);
+		vector_sum_32(input->x,i*d+d,d,sup->V);
+		vector_sum_32(input->x,i*d+d*2,d,sup->V);
+		vector_sum_32(input->x,i*d+d*3,d,sup->V);
+	}
+	for(int i=(np/4)*4;i<np;++i)
+		vector_sum_32(input->x,i*d,d,sup->V);
 }
 
 void alimentation_operator(params* input, support* sup) {
@@ -271,8 +278,8 @@ void individual_movement(int i, params* input, support* sup) {
         }
 	//sup->f_new[i] = evaluate_f(sup->x_new, input->c, i, input->d);					//accede a x_new
 	type f_new_i = evaluate_f(sup->x_new, input->c, i, input->d);
+	
 	type delta_f_i = f_new_i - sup->f_curr[i];
-
 	if (delta_f_i < 0) { 
 		for(int j = 0; j < input->d; ++j) {
 			sup->delta_x[i*input->d+j] = sup->x_new[j] - input->x[i*input->d+j];				// aggiornamento delta_x
@@ -292,10 +299,29 @@ void individual_movement(int i, params* input, support* sup) {
 void fss(params* input) {
 	support* sup = initialize_support_data_stuct(input);
 
-	for (int i = 0; i < input->np; ++i) {			
+	for (int i = 0; i < input->np-3; i+=4) {			
 		sup->W[i] = input->wscale/2;
 		sup->w_sum = sup->w_sum + sup->W[i];
 		sup->f_curr[i] = evaluate_f(input->x, input->c, i, input->d);
+
+		sup->W[i+1] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+1];
+		sup->f_curr[i+1] = evaluate_f(input->x, input->c, i+1, input->d);
+
+		sup->W[i+2] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+2];
+		sup->f_curr[i+2] = evaluate_f(input->x, input->c, i+2, input->d);
+
+		sup->W[i+3] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+3];
+		sup->f_curr[i+3] = evaluate_f(input->x, input->c, i+3, input->d);
+	}
+	for (int i =(input->np/4)*4; i < input->np; i++) {
+		printf("%i\n",i);
+		sup->W[i] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i];
+		sup->f_curr[i] = evaluate_f(input->x, input->c, i, input->d);
+
 	}
 
 	for (int i = 0; i < input->iter; ++i) {

@@ -339,5 +339,75 @@ endforjw:
     
     stop 
 
+
+
+
+;vector_sum32(MATRIX x, int offset, int n,VECTOR v);
+section .data
+section .bss
+section .text
+
+global vector_sum_32
+    x_vs equ 8
+    offset_vs equ 12
+    n_vs equ 16
+    v_vs equ 20
+
+    UNROLL_VS equ 8
+
+vector_sum_32:
+
+    start
+
+
+    mov     eax,[ebp+x_vs]          ; x
+    mov     ebx,[ebp+offset_vs]     ; offset
+    imul    ebx,4                   ; porta offset a versione byte
+    add     eax,ebx                 ; porta l'indice alla posizione del vettore target
+
+    mov     ebx,[ebp+v_vs]          ; v
+
+    mov     edi,[ebp+n_vs]          ; n
+    sub     edi,UNROLL_VS-1         ; unroll
+
+    mov     esi,0                   ; i=0
+fori_vs:
+
+    movaps  xmm0,[ebx+esi*4]        ; v[...]
+    addps   xmm0,[eax+esi*4]        ; somma v[...] con x[...]
+    movaps  [eax+esi*4],xmm0        ; carica il risultato su x[...] in memoria
+
+    movaps  xmm0,[ebx+esi*4+16]     ; UNROLL
+    addps   xmm0,[eax+esi*4+16]
+    movaps  [eax+esi*4+16],xmm0
+
+    add     esi,UNROLL_VS           ; i+=8
+    cmp     esi,edi                 ; i<n-7?
+    jl      fori_vs
+
+
+    add     edi,UNROLL_VS-1         ; ripristino n
+
+    cmp     esi,edi                 ; i<n?
+    jge     end_vs
+    
+forino_vs:                          ; gestione caso vettore non multiplo di 8
+    movss   xmm0,[ebx+esi*4]    
+    addss   xmm0,[eax+esi*4]
+    movss   [eax+esi*4],xmm0
+
+    inc     esi
+    cmp     esi,edi
+    jl      forino_vs
+    
+
+end_vs:
+
+    stop
+
+
+
+
+
     
 
