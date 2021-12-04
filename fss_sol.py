@@ -4,8 +4,8 @@ import scipy as sc;
 import scipy.optimize;
 
 d = 8; #dimensioni
-nx = 735; #numero di pesci
-iters = 350; #iterazioni
+nx = 64; #numero di pesci
+iters = 250; #iterazioni
 
 def dsload(filename, dtype = 'f'):
         with open(filename,'rb') as datafile:
