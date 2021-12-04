@@ -211,13 +211,10 @@ void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, MATRIX num_2,
 }
 
 void volitive_movement(params* input, support* sup) {
-
     for(int i=0;i<input->d;++i)
     	sup->V[i]=0;
+	if(sup->w_sum==0) return;
     compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
-//    compute_weighted_avg(input->np, input->d, sup->V, input->x, sup->W, sup->w_sum);
-//    for(int i=0;i<input->d;++i)
-//    	printf(" nasm %f\n",sup->V[i]);
 	type sgn = (sup->delta_w >= 0) ? -1 : 1;
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;
@@ -229,9 +226,14 @@ void volitive_movement(params* input, support* sup) {
 }
 
 void instincitve_movement(params* input, support* sup) {
-	compute_weighted_avg(input->np, input->d, sup->V, sup->delta_x, sup->delta_f, sup->f_sum);
-	int d=input->d;
-	int np=input->np;
+	int d=input->d,np=input->np;
+
+	for(int i=0;i<d;++i)
+		sup->V[i]=0;
+	if(sup->f_sum==0) return;
+
+	compute_avg_32(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
+
 	for (int i = 0; i < np-3; i+=4) {
 		vector_sum_32(input->x,i*d,d,sup->V);
 		vector_sum_32(input->x,i*d+d,d,sup->V);
@@ -250,7 +252,7 @@ void alimentation_operator(params* input, support* sup) {
         type temp = sup->w_sum;
         sup->w_sum = 0;
         for (int i = 0; i< input->np; ++i) {
-            sup->W[i] = sup->W[i] + sup->delta_f[i]/max_delta_f;
+            sup->W[i] = sup->W[i] + (-sup->delta_f[i])/max_delta_f;
             sup->w_sum = sup->w_sum + sup->W[i];
         }
         sup->delta_w = sup->w_sum - temp;
@@ -265,11 +267,6 @@ type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 	return expf(quad) + quad- scalar;
 }
 
-
-void reset(int i, int d, MATRIX x, support *sup) {
-	for (int j = 0; j < d; ++j) 
-		sup->delta_x[i*d+j] = 0;
-}
 
 void individual_movement(int i, params* input, support* sup) {
 	sup->f_sum=0;
@@ -289,7 +286,8 @@ void individual_movement(int i, params* input, support* sup) {
 		sup->delta_f[i] = delta_f_i;
 		sup->f_sum = sup->f_sum + delta_f_i;
 	} else {
-		reset(i, input->d, sup->delta_x, sup);
+		for (int j = 0; j < input->d; ++j) 
+			sup->delta_x[i*input->d+j] = 0;
 		sup->delta_f[i]=0;
 	}
 }
