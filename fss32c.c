@@ -210,6 +210,7 @@ void volitive_movement(params* input, support* sup) {
 		if (dist_x_i_B == 0) continue;
 		for (int j = 0; j<input->d; j++)
 			input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
+		sup->r_i++;
 	}
 }
 
