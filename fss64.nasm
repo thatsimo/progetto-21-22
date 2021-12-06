@@ -80,8 +80,8 @@ global vector_sum_64
 vector_sum_64:
     start
 
-    mov     rax,[ebp+x_vs]          ; x
-    mov     rbx,[ebp+offset_vs]     ; offset
+    mov     rax,[rbp+x_vs]          ; x
+    mov     rbx,[rbp+offset_vs]     ; offset
     imul    rbx,4                   ; porta offset a versione byte. Vedere se in realtà è 8
     add     rax,rbx                 ; porta l'indice alla posizione del vettore target
 
