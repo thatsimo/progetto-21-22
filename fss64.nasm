@@ -47,15 +47,15 @@ fori_min:
 	jge 	end_min                 ; gestione caso lunghezza multipla di 8
 
 forino_min:                         ; replica codice per versione scalare double
-	vmovq 	xmm1,[rax+rsi*8]        
-	vminpd 	xmm0, xmm1
+	vmovq 	xmm1,[rax+rsi*8]    	; muovo un double in xmm1. Nota : la v sembrerebbe non necessaria ma dovrebbe impedire il context switch evitando di incorrere nella penalità    
+	vminpd 	xmm0, xmm1				; la v è presente per lo stesso ragionamento di sopra
 	add	    rsi,1
     cmp     rsi,rdi
 	jl	    forino_min
 
 end_min:                            ; caricamento del minimo in memoria
 	mov 	rax,[rbp+max]
-	vmovq 	[rax], xmm0
+	vmovq 	[rax], xmm0			
 
 	stop
 	
