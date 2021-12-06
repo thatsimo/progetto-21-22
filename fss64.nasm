@@ -1,120 +1,128 @@
-; ---------------------------------------------------------
-; Regression con istruzioni AVX a 64 bit
-; ---------------------------------------------------------
-; F. Angiulli
-; 23/11/2017
-;
-
-;
-; Software necessario per l'esecuzione:
-;
-;     NASM (www.nasm.us)
-;     GCC (gcc.gnu.org)
-;
-; entrambi sono disponibili come pacchetti software 
-; installabili mediante il packaging tool del sistema 
-; operativo; per esempio, su Ubuntu, mediante i comandi:
-;
-;     sudo apt-get install nasm
-;     sudo apt-get install gcc
-;
-; potrebbe essere necessario installare le seguenti librerie:
-;
-;     sudo apt-get install lib32gcc-4.8-dev (o altra versione)
-;     sudo apt-get install libc6-dev-i386
-;
-; Per generare file oggetto:
-;
-;     nasm -f elf64 regression64.nasm
-;
-
 %include "sseutils64.nasm"
 
-section .data			; Sezione contenente dati inizializzati
+; min_vector_64(VECTOR x, int n, type* max)
 
-section .bss			; Sezione contenente dati non inizializzati
+section .data
+section .bss
+section .text
 
-alignb 32
-stepind		resq		1
+global min_vector_64
+	x equ 8
+	n equ 12
+	max equ 16
+    UNROLL_MAX equ 4 ; ripristinare a 8
+min_vector_64 :
+	start
+	mov     rax,[rbp+x]             ; x
+	mov     rdi,[rbp+n]             ; n
+	sub     rdi,UNROLL_MAX-1        ; gestione vettore non multiplo
+	vmovapd ymm0,[rax]              ; primi quattro elementi (in teoria)
+	mov 	rsi, 4                  ; i=4
 
-section .text			; Sezione contenente il codice macchina
+fori_min:
+    vmovapd ymm1,[rax+rsi*8]        ; xmm1<-x[...]
+	vminpd 	ymm0,ymm1               ; confronto ymm0 ymm1
 
-; ----------------------------------------------------------
-; macro per l'allocazione dinamica della memoria
-;
-;	getmem	<size>,<elements>
-;
-; alloca un'area di memoria di <size>*<elements> bytes
-; (allineata a 16 bytes) e restituisce in EAX
-; l'indirizzo del primo bytes del blocco allocato
-; (funziona mediante chiamata a funzione C, per cui
-; altri registri potrebbero essere modificati)
-;
-;	fremem	<address>
-;
-; dealloca l'area di memoria che ha inizio dall'indirizzo
-; <address> precedentemente allocata con getmem
-; (funziona mediante chiamata a funzione C, per cui
-; altri registri potrebbero essere modificati)
+   ; vmovapd ymm1,[rax+rsi*8+16]     ; UNROLL    
+;	vminpd 	ymm0,ymm1
 
-extern get_block
-extern free_block
+	add	    rsi,UNROLL_MAX          ; i+=UNROLL
 
-%macro	getmem	2
-	mov	rdi, %1
-	mov	rsi, %2
-	call	get_block
-%endmacro
+	cmp 	rsi,rdi                 ; i<n-7?
+	jl 	    fori_min
 
-%macro	fremem	1
-	mov	rdi, %1
-	call	free_block
-%endmacro
 
-; ------------------------------------------------------------
-; Funzione prova
-; ------------------------------------------------------------
-global prova
+	add 	rdi,UNROLL_MAX-1        ; ripristino n
 
-msg	db 'stepind:',0
-nl	db 10,0
 
-prova:
-		; ------------------------------------------------------------
-		; Sequenza di ingresso nella funzione
-		; ------------------------------------------------------------
-		push		rbp				; salva il Base Pointer
-		mov		rbp, rsp			; il Base Pointer punta al Record di Attivazione corrente
-		pushaq						; salva i registri generali
+	vmovapd ymm1,ymm0               ; riduzione vettore
+	vshufpd ymm1,ymm0,00001110b
+	vminpd 	ymm0,ymm1
+	vmovapd ymm1,ymm0
+	vshufpd ymm1,ymm1,00000001b
+	vminpd 	ymm0,ymm1               
 
-		; ------------------------------------------------------------
-		; I parametri sono passati nei registri
-		; ------------------------------------------------------------
-		; rdi = indirizzo della struct input
 
-		; esempio: stampa input->stepind
-		; RDI contiente l'indirizzo della struttura contenente i parametri
-		; [EDI]	input->x
-		; [EDI + 8] input->xh
-		; [EDI + 16] input->c
-		; [EDI + 24] input->r
-		; [EDI + 32] input->nx
-		; [EDI + 36] input->d
-		; [EDI + 40] input->iter
-		; [EDI + 48] input->stepind
-		; [EDI + 56] input->stepvol
-		; [EDI + 64] input->wscale
-		; ...
-		VMOVSD		XMM0, [RDI+48]
-		VMOVSD		[stepind], XMM0
-		prints 		msg
-		printsd		stepind
-		prints 		nl
-		; ------------------------------------------------------------
-		; Sequenza di uscita dalla funzione
-		; ------------------------------------------------------------
-		
-		popaq				; ripristina i registri generali
-		mov		rsp, rbp	; ripristina lo Stack Pointer
-		pop		rbp		; ripristina il Base Pointer
-		ret				; torna alla funzione C chiamante
+	cmp 	rsi,rdi                 ; i<n? 
+	jge 	end_min                 ; gestione caso lunghezza multipla di 8
+
+forino_min:                         ; replica codice per versione scalare double
+	vmovq 	xmm1,[rax+rsi*8]        
+	vminpd 	xmm0, xmm1
+	add	    rsi,1
+    cmp     rsi,rdi
+	jl	    forino_min
+
+end_min:                            ; caricamento del minimo in memoria
+	mov 	rax,[rbp+max]
+	vmovq 	[rax], xmm0
+
+	stop
+	
+
+
+;vector_sum64(MATRIX x, int offset, int n,VECTOR v);
+
+section .data
+section .bss
+section .text
+
+global vector_sum_64
+    x_vs equ 8
+    offset_vs equ 12
+    n_vs equ 16
+    v_vs equ 20
+
+    UNROLL_VS equ 4 ; ripristinare a 8 in seguito
+
+	; controllare sopra 
+
+vector_sum_64:
+    start
+
+    mov     rax,[ebp+x_vs]          ; x
+    mov     rbx,[ebp+offset_vs]     ; offset
+    imul    rbx,4                   ; porta offset a versione byte 
+    add     rax,rbx                 ; porta l'indice alla posizione del vettore target
+
+    mov     rbx,[rbp+v_vs]          ; v
+
+    mov     rdi,[rbp+n_vs]          ; n
+    sub     rdi,UNROLL_VS-1         ; unroll
+
+    mov     rsi,0                   ; i=0
+fori_vs:
+
+    vmovapd  ymm0,[rbx+rsi*8]        ; v[...]
+    vaddpd   ymm0,[rax+rsi*8]        ; somma v[...] con x[...]
+    vmovapd  [rax+rsi*8],ymm0        ; carica il risultato su x[...] in memoria
+
+   ; vmovapd  ymm0,[rbx+rsi*8+16]     ; UNROLL
+   ; vaddpd   ymm0,[rax+rsi*8+16]
+   ; vmovapd  [rax+rsi*8+16],ymm0
+
+   ; add     rsi,UNROLL_VS           ; i+=8
+
+    cmp     rsi,rdi                 ; i<n-7?
+    jl      fori_vs
+
+
+    add     rdi,UNROLL_VS-1         ; ripristino n
+
+    cmp     rsi,rdi                 ; i<n?
+    jge     end_vs
+    
+forino_vs:                          ; gestione caso vettore non multiplo di 8
+    vmovq   xmm0,[rbx+rsi*8]  
+    vmovq   xmm1, [rax+rsi*8] 		; vedere se si possa evitare lo spostamento nel registro e farlo direttamente dalla memoria  
+    vaddpd  xmm0,xmm1 
+    vmovq   [rcx+rsi*8],xmm0
+
+    inc     rsi
+    cmp     rsi,rdi
+    jl      forino_vs
+
+end_vs:
+    stop
+
+
