@@ -225,6 +225,7 @@ void instincitve_movement(params* input, support* sup) {
 
 	compute_avg_32(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
 
+	#pragma omp parallel for
 	for (int i = 0; i < np-3; i+=4) {
 		vector_sum_32(input->x,i*d,d,sup->V);
 		vector_sum_32(input->x,i*d+d,d,sup->V);
