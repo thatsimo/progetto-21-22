@@ -6,14 +6,15 @@ section .bss
 section .text
 
 global min_vector_64
-	x equ 8
-	n equ 12
-	max equ 16
+	; rdi = x
+    ; rsi = n
+    ; rdx = max
     UNROLL_MAX equ 8 
 min_vector_64 :
 	start
-	mov     rax,[rbp+x]             ; x
-	mov     rdi,[rbp+n]             ; n
+
+	mov     rax,rdi                 ; x
+	mov     rdi,rsi                 ; n
 	sub     rdi,UNROLL_MAX-1        ; gestione vettore non multiplo
 	vmovapd ymm0,[rax]              ; primi quattro elementi (in teoria)
 	mov 	rsi, 4                  ; i=4
@@ -53,8 +54,7 @@ forino_min:                         ; replica codice per versione scalare double
 	jl	    forino_min
 
 end_min:                            ; caricamento del minimo in memoria
-	mov 	rax,[rbp+max]
-	vmovq 	[rax], xmm0			
+	vmovq 	[rdx], xmm0			
 
 	stop
 	
@@ -66,10 +66,10 @@ section .bss
 section .text
 
 global vector_sum_64
-    x_vs equ 8
-    offset_vs equ 12
-    n_vs equ 16
-    v_vs equ 20
+    ; rdi = x
+    ; rsi = offset
+    ; rdx = n
+    ; rcx = v
 
     UNROLL_VS equ 8 
 
@@ -78,14 +78,14 @@ global vector_sum_64
 vector_sum_64:
     start
 
-    mov     rax,[rbp+x_vs]          ; x
-    mov     rbx,[rbp+offset_vs]     ; offset
-    imul    rbx,4                   ; porta offset a versione byte. Vedere se in realtà è 8
+    mov     rax,rdi                 ; x
+    mov     rbx,rsi                 ; offset
+    imul    rbx,8                   ; porta offset a versione byte. Un double è 8 byte
     add     rax,rbx                 ; porta l'indice alla posizione del vettore target
 
-    mov     rbx,[rbp+v_vs]          ; v
+    mov     rbx,rcx                 ; v
 
-    mov     rdi,[rbp+n_vs]          ; n
+    mov     rdi,rdx                 ; n
     sub     rdi,UNROLL_VS-1         ; unroll
 
     mov     rsi,0                   ; i=0
@@ -130,23 +130,24 @@ section .bss
 section .text
 
 global euclidian_distance_64
-    x equ 8
-    offset equ 12
-    y equ 16
-    d equ 20
-    dist equ 24
+    ; rdi = x
+    ; rsi = offset
+    ; rdx = y
+    ; rcx = d
+    ; r8 = dist
+
     UNROLL_EUC equ 8
 
 euclidian_distance_64:
     start
     
-    mov     rax,[rbp+x]         ; x
-    mov     rbx,[rbp+offset]    ; offset
-    mov     rcx,[rbp+y]         ; y
-    imul    rbx,4               ; offset in versione byte
+    mov     rax,rdi             ; x
+    mov     rbx,rsi             ; offset
+    mov     rdi,rcx             ; d
+    mov     rcx,rdx             ; y
+    imul    rbx,8               ; offset in versione byte
     add     rax,rbx             ; indirizzo del vettore target nella matrice
     
-    mov     rdi,[rbp+d]         ; d
     sub     rdi,UNROLL_EUC-1    ; gestione vettore non multiplo di 8
     
     vxorpd  xmm0,xmm0,xmm0          ; ret=0
@@ -168,10 +169,11 @@ fori_euc:
     cmp    rsi,rdi              ; i<n-7?
     jl     fori_euc
     
-    add    rdi,UNROLL_EUC        ; i+=8
+    add    rdi,UNROLL_EUC-1        ; i+=8
     
-    vhaddpd ymm0,ymm0            ; riduzione di xmm0
-    vhaddpd ymm0,ymm0
+    vhaddpd     ymm0,ymm0                   ; riduzione di ymm0
+    vperm2f128  ymm2,ymm0,ymm0,00000011b
+    vaddsd      xmm0,xmm2
         
     cmp   rsi,rdi               ; caso vettore multiplo di 8
     jge   end_euc
@@ -189,9 +191,104 @@ forino_euc:                     ; replica scalare della sezione precedente
 end_euc:                        
     vsqrtpd xmm0,xmm0            ; sqrt(ret)
     
-    mov     eax,[ebp+dist]      ; caricamento in memoria 
-    vmovq   [eax],xmm0
+    vmovq   [r8],xmm0
     
+    stop
+
+
+;eval_f_64(VECTOR x,int d,VECTIOR c, int offset,type* quad,type* scalar)
+
+section .data
+section .bss
+section .text
+global main
+    ; rdi = x
+    ; rsi = d
+    ; rdx = c
+    ; rcx = offset
+    ; r8 = quad
+    ; r9 = scalar
+    UNROLL_EVALF equ 8
+
+main:
+
+    start
+
+        mov     rax,rdi
+        imul    rcx,8
+        add     rax,rcx     ; x[i]
+
+        mov     rbx,rdx     ; c
+        mov     rdi,rsi     ; d
+
+        vxorps  ymm0,ymm0   ; quad=0    
+        vxorps  ymm1,ymm1   ; scalar=0
+
+        sub     rdi,UNROLL_EVALF-1  ; d-7
+
+        mov     rsi,0               ; i=0
+        
+fori_evalf:
+    vmovapd ymm2,[rax+esi*8]        
+    vmovapd ymm3,ymm2
+    vmulpd  ymm3,ymm3
+    vaddpd  ymm0,ymm3
+    
+
+    vmovapd ymm3,[rbx+esi*8]
+    vmulpd  ymm2,ymm3
+    vaddpd  ymm1,ymm2
+
+
+    vmovapd ymm2,[rax+esi*8+32]
+    vmovapd ymm3,ymm2
+    vmulpd  ymm3,ymm3
+    vaddpd  ymm0,ymm3
+    
+
+    vmovapd ymm3,[rbx+esi*8+32]
+    vmulpd  ymm2,ymm3
+    vaddpd  ymm1,ymm2
+
+    add     rsi,UNROLL_EVALF 
+    cmp     rsi,rdi
+    jl      fori_evalf
+
+
+    add         rdi,UNROLL_EVALF-1
+
+    vhaddpd     ymm0,ymm0
+    vperm2f128  ymm2,ymm0,ymm0,00000011b
+    vaddsd      xmm0,xmm2
+    
+
+
+    vhaddpd     ymm1,ymm1
+    vperm2f128  ymm2,ymm1,ymm1,00000011b
+    vaddsd      xmm1,xmm2
+
+    cmp         rsi,rdi
+    jge         end_evalf
+
+forino_evalf:
+
+    vmovq   xmm2,[rax+esi*8]
+    vmovq   xmm3,xmm2
+    vmulpd  xmm3,xmm3
+    vaddpd  xmm0,xmm3
+
+    vmovq   xmm3,[rbx+esi*8]
+    vmulpd  xmm2,xmm3
+    vaddpd  xmm1,xmm2
+
+    inc     rsi
+    cmp     rsi,rdi
+    jl      forino_evalf
+
+end_evalf:
+    vmovq [r8],xmm0
+    vmovq [r9],xmm1
+
     stop
     
 
