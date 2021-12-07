@@ -73,7 +73,7 @@ global vector_sum_64
     n_vs equ 16
     v_vs equ 20
 
-    UNROLL_VS equ 4 ; ripristinare a 8 in seguito
+    UNROLL_VS equ 8 
 
 	; controllare sopra 
 
@@ -97,11 +97,11 @@ fori_vs:
     vaddpd   ymm0,[rax+rsi*8]        ; somma v[...] con x[...]
     vmovapd  [rax+rsi*8],ymm0        ; carica il risultato su x[...] in memoria
 
-   ; vmovapd  ymm0,[rbx+rsi*8+16]     ; UNROLL
-   ; vaddpd   ymm0,[rax+rsi*8+16]
-   ; vmovapd  [rax+rsi*8+16],ymm0
+    vmovapd  ymm0,[rbx+rsi*8+32]     ; UNROLL
+    vaddpd   ymm0,[rax+rsi*8+32]
+    vmovapd  [rax+rsi*8+32],ymm0
 
-   ; add     rsi,UNROLL_VS           ; i+=8
+    add     rsi,UNROLL_VS           ; i+=8
 
     cmp     rsi,rdi                 ; i<n-7?
     jl      fori_vs
