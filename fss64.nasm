@@ -10,7 +10,7 @@ global min_vector_64
 	x equ 8
 	n equ 12
 	max equ 16
-    UNROLL_MAX equ 4 ; ripristinare a 8
+    UNROLL_MAX equ 8 
 min_vector_64 :
 	start
 	mov     rax,[rbp+x]             ; x
@@ -23,8 +23,8 @@ fori_min:
     vmovapd ymm1,[rax+rsi*8]        ; xmm1<-x[...]
 	vminpd 	ymm0,ymm1               ; confronto ymm0 ymm1
 
-   ; vmovapd ymm1,[rax+rsi*8+16]     ; UNROLL    
-;	vminpd 	ymm0,ymm1
+    vmovapd ymm1,[rax+rsi*8+32]     ; UNROLL    
+	vminpd 	ymm0,ymm1
 
 	add	    rsi,UNROLL_MAX          ; i+=UNROLL
 
