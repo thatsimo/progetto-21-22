@@ -202,7 +202,7 @@ end_euc:
 section .data
 section .bss
 section .text
-global main
+global eval_f_64
     ; rdi = x
     ; rsi = d
     ; rdx = c
@@ -211,7 +211,7 @@ global main
     ; r9 = scalar
     UNROLL_EVALF equ 8
 
-main:
+eval_f_64:
 
     start
 
@@ -230,24 +230,24 @@ main:
         mov     rsi,0               ; i=0
         
 fori_evalf:
-    vmovapd ymm2,[rax+esi*8]        
+    vmovapd ymm2,[rax+rsi*8]        
     vmovapd ymm3,ymm2
     vmulpd  ymm3,ymm3
     vaddpd  ymm0,ymm3
     
 
-    vmovapd ymm3,[rbx+esi*8]
+    vmovapd ymm3,[rbx+rsi*8]
     vmulpd  ymm2,ymm3
     vaddpd  ymm1,ymm2
 
 
-    vmovapd ymm2,[rax+esi*8+32]
+    vmovapd ymm2,[rax+rsi*8+32]
     vmovapd ymm3,ymm2
     vmulpd  ymm3,ymm3
     vaddpd  ymm0,ymm3
     
 
-    vmovapd ymm3,[rbx+esi*8+32]
+    vmovapd ymm3,[rbx+rsi*8+32]
     vmulpd  ymm2,ymm3
     vaddpd  ymm1,ymm2
 
@@ -273,12 +273,12 @@ fori_evalf:
 
 forino_evalf:
 
-    vmovq   xmm2,[rax+esi*8]
+    vmovq   xmm2,[rax+rsi*8]
     vmovq   xmm3,xmm2
     vmulpd  xmm3,xmm3
     vaddpd  xmm0,xmm3
 
-    vmovq   xmm3,[rbx+esi*8]
+    vmovq   xmm3,[rbx+rsi*8]
     vmulpd  xmm2,xmm3
     vaddpd  xmm1,xmm2
 
@@ -341,7 +341,7 @@ forjw:
     sub     rdx,rdi
     vmulpd  ymm1,ymm7
     vaddpd  ymm1,[r9+rdi*8]
-    vmovapd [r9+rdi*8],ymm1
+    vmovupd [r9+rdi*8],ymm1
 
 
     add     rdx,rdi

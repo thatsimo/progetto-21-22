@@ -66,6 +66,20 @@ typedef struct {
 	int silent;
 } params;
 
+typedef struct {
+	type stepind_curr;
+	type stepvol_curr;
+	type w_sum;
+	type w_old;
+	type f_sum;
+	VECTOR W;
+	VECTOR delta_f;
+	MATRIX delta_x;
+	VECTOR x_new;
+	VECTOR V;
+	VECTOR f_curr;
+	int r_i;
+} support;
 /*
 * 
 *	Le funzioni sono state scritte assumento che le matrici siano memorizzate 
@@ -73,10 +87,10 @@ typedef struct {
 * 	di memoria, ma a scelta del candidato possono essere 
 * 	memorizzate mediante array di array (double**).
 * 
-* 	In entrambi i casi il candidato dovrà inoltre scegliere se memorizzare le
+* 	In entrambi i casi il candidato dovrï¿½ inoltre scegliere se memorizzare le
 * 	matrici per righe (row-major order) o per colonne (column major-order).
 *
-* 	L'assunzione corrente è che le matrici siano in row-major order.
+* 	L'assunzione corrente ï¿½ che le matrici siano in row-major order.
 * 
 */
 
@@ -86,6 +100,10 @@ void* get_block(int size, int elements) {
 
 void free_block(void* p) { 
 	_mm_free(p);
+}
+
+VECTOR alloc_vector(int rows) {
+	return (VECTOR) get_block(sizeof(type),rows);
 }
 
 MATRIX alloc_matrix(int rows, int cols) {
@@ -110,11 +128,19 @@ void dealloc_matrix(MATRIX mat) {
 * 	successivi N*M*4 byte: matrix data in row-major order --> numeri doubleing-point a precisione singola
 * 
 *****************************************************************************
-*	Se lo si ritiene opportuno, è possibile cambiare la codifica in memoria
+*	Se lo si ritiene opportuno, ï¿½ possibile cambiare la codifica in memoria
 * 	della matrice. 
 *****************************************************************************
 * 
 */
+
+extern void min_vector_64(VECTOR x, int n, type* max);
+extern void euclidian_distance_64(MATRIX x,int offset,VECTOR y,int d,type* dist);
+extern void eval_f_64(MATRIX x, int d, VECTOR c, int offset,type* quad, type* scalar);
+extern void compute_avg_64(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris);
+extern void vector_sum_64(MATRIX x, int offset, int n,VECTOR V);
+
+
 MATRIX load_data(char* filename, int *n, int *k) {
 	FILE* fp;
 	int rows, cols, status, i;
@@ -174,12 +200,229 @@ void save_data(char* filename, void* X, int n, int k) {
 
 // PROCEDURE ASSEMBLY
 
-extern void prova(params* input);
+support* initialize_support_data_stuct(params* input) {
+	support* sup = malloc(sizeof(support));
+	sup->stepind_curr = input->stepind;
+	sup->stepvol_curr = input->stepvol;
+	sup->w_sum = 0;
+	sup->w_old = 0;
+	sup->f_sum = 0;
+	sup->W = alloc_vector(input->np);
+	sup->delta_f = alloc_vector(input->np);
+	sup->delta_x = alloc_matrix(input->np,input->d);
+	sup->x_new = alloc_vector(input->d);
+	sup->V = alloc_vector(input->d);
+	sup->f_curr = alloc_vector(input->np);
+	sup->r_i=0;
+	return sup;
+}
 
-void fss(params* input){
-	// -------------------------------------------------
-	// Codificare qui l'algoritmo Fish Search School
-	// -------------------------------------------------
+void find_and_assign_minimum(params* input, support* sup) {
+	int k = 0;
+	type min_f = sup->f_curr[0];
+
+	for (int i = 0; i<input->np; i++) {
+		if (sup->f_curr[i] < min_f) {
+			min_f = sup->f_curr[i];
+			k = i;
+		}
+	}
+	
+	printf("valore ottimo : %f\n", min_f);
+
+	input->xh = alloc_vector(input->d);
+
+	for (int j  = 0; j<input->d; j++)
+		input->xh[j] = input-> x[k*input->d+j];
+}
+
+void update_parameters(params* input, support* sup) {
+	sup->stepind_curr = sup->stepind_curr - input->stepind / input->iter;
+	sup->stepvol_curr = sup->stepvol_curr - input->stepvol / input->iter; 
+}
+
+void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, VECTOR num_2, type den) {
+    for (int i = 0; i < d; ++i)			// inizializzazione vettore accumulatore
+        acc[i] = 0;
+    if (den == 0) return;               // check denominatore diverso da zero
+    for (int i = 0; i < np; i++)
+        for (int j = 0; j < d; j++)
+            acc[j] += num_1[i*d+j] * (num_2[i]/den);
+}
+
+void euclidian_distance(MATRIX x, int offset, VECTOR v,int d,type* dist) {
+	type ret=0;
+	for(int j=0;j<d;++j)
+		ret+=(x[offset+j]-v[j])*(x[offset+j]-v[j]);
+	*dist=sqrt(ret);
+}
+
+void volitive_movement(params* input, support* sup) {
+	if( sup->w_sum == 0) {
+		sup->w_sum = sup->w_old;
+		return;
+	}
+	
+
+    for (int i=0;i<input->d;++i) 
+		sup->V[i]=0;
+	
+    //compute_avg_64(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
+	compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
+	//printf("ciao\n");
+	type sgn = (sup->w_old - sup->w_sum < 0 ) ? -1 : 1;
+	for (int i = 0; i<input->np; i++) {
+		type dist_x_i_B=0;
+		
+		euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//euclidian_distance_64(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		
+		if (dist_x_i_B == 0) continue;
+		for (int j = 0; j<input->d; j++)
+			input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
+		sup->r_i++;
+	}
+}
+
+void instincitve_movement(params* input, support* sup) {
+	if(sup->f_sum==0) return;
+
+	int d=input->d,np=input->np;
+
+	for(int i=0;i<input->d;++i)
+		sup->V[i]=0;
+
+	//compute_avg_64(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
+	compute_weighted_avg(input->np,input->d,sup->V,sup->delta_x,sup->delta_f,sup->f_sum);
+
+	for (int i = 0; i < np; i+=4)
+		for(int j=0;j<input->d;++j)
+			input->x[i*input->d+j]+=sup->V[j];
+
+	/*
+	for (int i = 0; i < np-3; i+=4) {
+		vector_sum_64(input->x,i*d,d,sup->V);
+		vector_sum_64(input->x,i*d+d,d,sup->V);
+		vector_sum_64(input->x,i*d+d*2,d,sup->V);
+		vector_sum_64(input->x,i*d+d*3,d,sup->V);
+	}
+	for(int i=(np/4)*4;i<np;++i)
+		vector_sum_64(input->x,i*d,d,sup->V);
+		*/
+}
+
+void alimentation_operator(params* input, support* sup) {
+	type min_delta_f = sup->delta_f[0];
+	for(int i=0;i<input->np;++i)
+		if(sup->delta_f[i]<min_delta_f) min_delta_f=sup->delta_f[i];
+	//min_vector_64(sup->delta_f, input->np, &min_delta_f);	//rinominare in min
+    if (min_delta_f == 0) return;
+    sup->w_old = sup->w_sum;
+    sup->w_sum = 0;
+
+
+    for (int i = 0; i< input->np-3; i+=4) {
+        sup->W[i] += sup->delta_f[i]/min_delta_f;
+        sup->w_sum += sup->W[i];
+
+		sup->W[i+1] += sup->delta_f[i+1]/min_delta_f;
+        sup->w_sum += sup->W[i+1];
+
+		sup->W[i+2] += sup->delta_f[i+2]/min_delta_f;
+        sup->w_sum += sup->W[i+2];
+
+		sup->W[i+3] += sup->delta_f[i+3]/min_delta_f;
+        sup->w_sum += sup->W[i+3];
+    }
+	for(int i=(input->np/4)*4;i<input->np;++i) {
+		sup->W[i] += sup->delta_f[i]/min_delta_f;
+        sup->w_sum += sup->W[i];
+	}
+
+}
+
+type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
+	type quad=0;
+	type scalar=0;
+	for(int j=0;j<d;++j) {
+		quad+=x[i*d+j]*x[i*d+j];
+		scalar+=x[i*d+j]*c[j];
+	}
+
+	//eval_f_64(x, d, c, i*d, &quad, &scalar);
+	return expf(quad) + quad- scalar;
+}
+
+
+void individual_movement(int i, params* input, support* sup) {
+	for (int j = 0; j < input->d; ++j) {
+        sup->x_new[j] = input->x[i*input->d+j] + ((input->r[sup->r_i++])*2-1) * sup->stepind_curr;
+    }	
+				
+	
+	type f_new_i = evaluate_f(sup->x_new, input->c, 0, input->d);
+	type delta_f_i = f_new_i - sup->f_curr[i];
+	if (delta_f_i < 0) {
+		sup->delta_f[i] = delta_f_i;
+		sup->f_curr[i] = f_new_i;
+		sup->f_sum = sup->f_sum + delta_f_i; 
+		for(int j = 0; j < input->d; ++j) {
+			sup->delta_x[i*input->d+j] = sup->x_new[j] - input->x[i*input->d+j];				// aggiornamento delta_x
+			input->x[i*input->d+j] = sup->x_new[j];										// aggiornamento posizione pesce	
+		}
+	} else {
+		for (int j = 0; j < input->d; ++j) 
+			sup->delta_x[i*input->d+j] = 0;
+		sup->delta_f[i]=0;
+	}
+}
+
+
+
+void fss(params* input) {
+	support* sup = initialize_support_data_stuct(input);
+
+	for (int i = 0; i < input->np-3; i+=4) {			
+		sup->W[i] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i];
+		sup->f_curr[i] = evaluate_f(input->x, input->c, i, input->d);
+
+		sup->W[i+1] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+1];
+		sup->f_curr[i+1] = evaluate_f(input->x, input->c, i+1, input->d);
+
+		sup->W[i+2] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+2];
+		sup->f_curr[i+2] = evaluate_f(input->x, input->c, i+2, input->d);
+
+		sup->W[i+3] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i+3];
+		sup->f_curr[i+3] = evaluate_f(input->x, input->c, i+3, input->d);
+	}
+	for (int i =(input->np/4)*4; i < input->np; i++) {
+		sup->W[i] = input->wscale/2;
+		sup->w_sum = sup->w_sum + sup->W[i];
+		sup->f_curr[i] = evaluate_f(input->x, input->c, i, input->d);
+
+	}
+	
+
+	for (int i = 0; i < input->iter; ++i) {
+		sup->f_sum = 0;
+		for (int j=0;j < input->np;++j)	
+			individual_movement(j, input, sup);
+		
+		alimentation_operator(input, sup);
+		
+		instincitve_movement(input, sup);
+
+		volitive_movement(input, sup);
+
+		update_parameters(input, sup);
+	
+	}
+
+	find_and_assign_minimum(input, sup);
 }
 
 int main(int argc, char** argv) {
@@ -210,7 +453,7 @@ int main(int argc, char** argv) {
 	input->wscale = 10;
 	
 	input->silent = 0;
-	input->display = 0;
+	input->display = 1;
 
 	//
 	// Visualizza la sintassi del passaggio dei parametri da riga comandi
@@ -381,7 +624,7 @@ int main(int argc, char** argv) {
 	}
 
 	// COMMENTARE QUESTA RIGA!
-	prova(input);
+	//prova(input);
 	//
 
 	//
