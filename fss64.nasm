@@ -35,13 +35,14 @@ fori_min:
 	add 	rdi,UNROLL_MAX-1        ; ripristino n
 
 
-	vmovapd ymm1,ymm0               ; riduzione vettore
-	vshufpd ymm1,ymm0,00001110b
-	vminpd 	ymm0,ymm1
-	vmovapd ymm1,ymm0
-	vshufpd ymm1,ymm1,00000001b
-	vminpd 	ymm0,ymm1               
 
+                                            ; riduzione vettore
+	vmovapd     ymm1,ymm0                   ; copia su ymm1
+	vperm2f128  ymm0,ymm0,ymm0,00110000b    ; permutazione dei 128 bit
+	vminpd 	    ymm0,ymm1                   
+    vmovapd     ymm1,ymm0                   ; copia su ymm1
+    vshufpd     xmm1,xmm1,01b               ; per confrontare gli ultimi due double si passa
+	vminpd 	    xmm0,xmm1                   ; agli xmm e si usa shufpd per invertire i 64 bit
 
 	cmp 	rsi,rdi                 ; i<n? 
 	jge 	end_min                 ; gestione caso lunghezza multipla di 8
@@ -59,7 +60,7 @@ end_min:                            ; caricamento del minimo in memoria
 	stop
 	
 
-;vector_sum64(MATRIX x, int offset, int n,VECTOR v);
+;vector_sum_64(MATRIX x, int offset, int n,VECTOR v);
 
 section .data
 section .bss
@@ -292,3 +293,91 @@ end_evalf:
     stop
     
 
+
+
+;compute_avg_64(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris)
+section .data
+section .bss
+section .text
+
+global compute_avg_64
+    ; rdi = x 
+    ; rsi = np
+    ; rdx = d
+    ; rcx = c
+    ; r8 = den
+    ; r9 = ris
+    UNROLL_W equ 8
+compute_avg_64:
+
+    start
+    mov rax,rdi     ; x
+    mov rbx,rcx     ; c
+    mov r10,rdx     ; d
+    mov r11,rsi     ; np
+    
+
+    vbroadcastsd ymm0,[r8]
+    
+    mov rsi,0
+    
+    
+foriw:
+    
+    mov             rdi,0
+    vbroadcastsd    ymm7,[rbx+rsi*8]
+    
+    
+    vdivpd  ymm7,ymm0
+    
+    mov     rdx,r10
+    imul    rdx,rsi
+
+    sub     r10,UNROLL_W-1
+forjw:
+    
+    add     rdx,rdi
+    vmovupd ymm1,[rax+rdx*8]
+    sub     rdx,rdi
+    vmulpd  ymm1,ymm7
+    vaddpd  ymm1,[r9+rdi*8]
+    vmovapd [r9+rdi*8],ymm1
+
+
+    add     rdx,rdi
+    vmovupd ymm1,[rax+rdx*8+32]
+    sub     rdx,rdi
+    vmulpd  ymm1,ymm7
+    vaddpd  ymm1,[r9+rdi*8+32]
+    vmovupd [r9+rdi*8+32],ymm1
+    
+    add     rdi,UNROLL_W
+    cmp     rdi,r10
+    jl      forjw
+
+    add     r10,UNROLL_W-1
+
+    cmp     rdi,r10
+    jge     endforjw
+    
+forinow:
+    add     rdx,rdi
+    vmovq   xmm1,[rax+rdx*8]
+    sub     rdx,rdi
+    vmulsd  xmm1,xmm7
+    vaddsd  xmm1,[r9+rdi*8]
+    vmovq   [r9+rdi*8],xmm1
+    
+    inc rdi
+    cmp rdi,r10
+    jl forinow
+    
+
+endforjw:
+
+    inc rsi 
+    cmp rsi,r11
+    jl  foriw
+
+
+    stop
