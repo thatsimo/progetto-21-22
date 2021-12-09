@@ -344,12 +344,16 @@ void alimentation_operator(params* input, support* sup) {
 type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 	type quad=0;
 	type scalar=0;
+	/*
 	for(int j=0;j<d;++j) {
 		quad+=x[i*d+j]*x[i*d+j];
 		scalar+=x[i*d+j]*c[j];
 	}
+	type quad2=0,scalar2=0;
+	*/
 
-	//eval_f_64(x, d, c, i*d, &quad, &scalar);
+	eval_f_64(x, d, c, i*d, &quad, &scalar);
+	//printf(" valore c : %lf ... %lf || valore nasm : %lf ... %lf \n",quad,scalar,quad2,scalar2);
 	return expf(quad) + quad- scalar;
 }
 

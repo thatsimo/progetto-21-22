@@ -214,79 +214,62 @@ global eval_f_64
 eval_f_64:
 
     start
+    
+    imul rcx,8
+    add rdi,rcx
 
-        mov     rax,rdi
-        imul    rcx,8
-        add     rax,rcx     ; x[i]
+    mov rax,0
 
-        mov     rbx,rdx     ; c
-        mov     rdi,rsi     ; d
+    vxorpd ymm0,ymm0
+    vxorpd ymm1,ymm1
 
-        vxorps  ymm0,ymm0   ; quad=0    
-        vxorps  ymm1,ymm1   ; scalar=0
+    sub rsi,3
 
-        sub     rdi,UNROLL_EVALF-1  ; d-7
 
-        mov     rsi,0               ; i=0
-        
-fori_evalf:
-    vmovapd ymm2,[rax+rsi*8]        
-    vmovapd ymm3,ymm2
-    vmulpd  ymm3,ymm3
-    vaddpd  ymm0,ymm3
+fori_f:
+    vmovapd ymm4,[rdi+rax*8]
+    vmovapd ymm2,ymm4
+    vmulpd  ymm2,ymm2
+    vaddpd  ymm0,ymm2
+
+    vmovapd ymm3,[rdx+rax*8]
+    vmulpd  ymm3,ymm4
+    vaddpd  ymm1,ymm3
+
+    add rax,4
+    cmp rax,rsi
+    jl fori_f
+
+    add rsi,3
+
+    vhaddpd ymm0,ymm0,ymm0
+    vperm2f128 ymm2,ymm0,ymm0,00010001b
+    vaddpd xmm0,xmm2
     
 
-    vmovapd ymm3,[rbx+rsi*8]
-    vmulpd  ymm2,ymm3
-    vaddpd  ymm1,ymm2
+    vhaddpd ymm1,ymm1,ymm1
+    vperm2f128 ymm2,ymm1,ymm1,00010001b
+    vaddpd xmm1,xmm2
 
+    cmp rax,rsi
+    jge end_f
 
-    vmovapd ymm2,[rax+rsi*8+32]
-    vmovapd ymm3,ymm2
-    vmulpd  ymm3,ymm3
-    vaddpd  ymm0,ymm3
-    
+forino_f:
 
-    vmovapd ymm3,[rbx+rsi*8+32]
-    vmulpd  ymm2,ymm3
-    vaddpd  ymm1,ymm2
-
-    add     rsi,UNROLL_EVALF 
-    cmp     rsi,rdi
-    jl      fori_evalf
-
-
-    add         rdi,UNROLL_EVALF-1
-
-    vhaddpd     ymm0,ymm0
-    vperm2f128  ymm2,ymm0,ymm0,00000011b
-    vaddsd      xmm0,xmm2
-    
-
-
-    vhaddpd     ymm1,ymm1
-    vperm2f128  ymm2,ymm1,ymm1,00000011b
-    vaddsd      xmm1,xmm2
-
-    cmp         rsi,rdi
-    jge         end_evalf
-
-forino_evalf:
-
-    vmovq   xmm2,[rax+rsi*8]
+    vmovq   xmm2,[rdi+rax*8]
     vmovq   xmm3,xmm2
-    vmulpd  xmm3,xmm3
-    vaddpd  xmm0,xmm3
+    vmulsd  xmm3,xmm3
+    vaddsd  xmm0,xmm3
 
-    vmovq   xmm3,[rbx+rsi*8]
-    vmulpd  xmm2,xmm3
-    vaddpd  xmm1,xmm2
+    vmovq   xmm3,[rdx+rax*8]
+    vmulsd  xmm2,xmm3
+    vaddsd  xmm1,xmm2
 
-    inc     rsi
-    cmp     rsi,rdi
-    jl      forino_evalf
-
-end_evalf:
+    inc rax
+    cmp rax,rsi
+    jl forino_f
+    
+end_f:
     vmovq [r8],xmm0
     vmovq [r9],xmm1
 
