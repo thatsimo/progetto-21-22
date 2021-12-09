@@ -71,49 +71,39 @@ global vector_sum_64
 vector_sum_64:
     start
 
-    mov     rax,rdi                 ; x
-    mov     rbx,rsi                 ; offset
-    imul    rbx,8                   ; porta offset a versione byte. Un double è 8 byte
-    add     rax,rbx                 ; porta l'indice alla posizione del vettore target
+    imul rsi,8
+    add rdi,rsi
 
-    mov     rbx,rcx                 ; v
-
-    mov     rdi,rdx                 ; n
-    sub     rdi,UNROLL_VS-1         ; unroll
-
-    mov     rsi,0                   ; i=0
-fori_vs:
-
-    vmovapd  ymm0,[rbx+rsi*8]        ; v[...]
-    vaddpd   ymm0,[rax+rsi*8]        ; somma v[...] con x[...]
-    vmovapd  [rax+rsi*8],ymm0        ; carica il risultato su x[...] in memoria
-
-    vmovapd  ymm0,[rbx+rsi*8+32]     ; UNROLL
-    vaddpd   ymm0,[rax+rsi*8+32]
-    vmovapd  [rax+rsi*8+32],ymm0
-
-    add     rsi,UNROLL_VS           ; i+=8
-
-    cmp     rsi,rdi                 ; i<n-7?
-    jl      fori_vs
+    sub rdx,3
+    mov rax,0
 
 
-    add     rdi,UNROLL_VS-1         ; ripristino n
+fori_ws:
+    vmovapd ymm0,[rdi+rax*8]
+    vaddpd   ymm0,[rcx+rax*8]
+    vmovapd [rdi+rax*8],ymm0
 
-    cmp     rsi,rdi                 ; i<n?
-    jge     end_vs
-    
-forino_vs:                          ; gestione caso vettore non multiplo di 8
-    vmovq   xmm0,[rbx+rsi*8]  
-    vmovq   xmm1, [rax+rsi*8] 		; vedere se si possa evitare lo spostamento nel registro e farlo direttamente dalla memoria  
-    vaddpd  xmm0,xmm1 
-    vmovq   [rcx+rsi*8],xmm0
+    add rax,4
+    cmp rax,rdx
+    jl fori_ws
 
-    inc     rsi
-    cmp     rsi,rdi
-    jl      forino_vs
+    add rdx,3
+
+    cmp rax,rdx
+    jge end_vs
+
+forino_ws:
+
+    vmovq xmm0,[rdi+rax*8]
+    vaddsd xmm0,[rcx+rax*8]
+    vmovapd [rdi+rax*8],xmm0
+
+    inc rax
+    cmp rax,rdx
+    jl forino_ws
 
 end_vs:
+
     stop
 
 

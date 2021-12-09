@@ -297,10 +297,24 @@ void instincitve_movement(params* input, support* sup) {
 	//compute_avg_64(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
 	compute_weighted_avg(input->np,input->d,sup->V,sup->delta_x,sup->delta_f,sup->f_sum);
 
-	for (int i = 0; i < np; i+=4)
-		for(int j=0;j<input->d;++j)
+	/*
+	MATRIX tmp = alloc_matrix(input->np,input->d);
+	for (int i = 0; i < np; i++)
+		for(int j=0;j<d;++j)
+			tmp[i*d+j]=input->x[i*input->d+j];
+	for (int i = 0; i < np; i++)
+		for(int j=0;j<d;++j)
 			input->x[i*input->d+j]+=sup->V[j];
 
+	*/
+
+	for(int i=0;i<np;++i)
+		vector_sum_64(input->x,i*d,d,sup->V);
+	/*
+	for (int i = 0; i < np; i++)
+		for(int j=0;j<d;++j)
+			printf("valore c : %lf ... valore nasm : %lf \n",input->x[i*input->d+j],tmp[i*d+j]);
+	*/
 	/*
 	for (int i = 0; i < np-3; i+=4) {
 		vector_sum_64(input->x,i*d,d,sup->V);
