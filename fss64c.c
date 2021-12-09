@@ -134,9 +134,9 @@ void dealloc_matrix(MATRIX mat) {
 * 
 */
 
-extern void min_vector_64(VECTOR x, int n, type* max);
-extern void euclidian_distance_64(MATRIX x,int offset,VECTOR y,int d,type* dist);
-extern void eval_f_64(MATRIX x, int d, VECTOR c, int offset,type* quad, type* scalar);
+extern void min_vector_64(VECTOR x, int n, type* max);									//done
+extern void euclidian_distance_64(MATRIX x,int offset,VECTOR y,int d,type* dist);		//done
+extern void eval_f_64(MATRIX x, int d, VECTOR c, int offset,type* quad, type* scalar);	//done
 extern void compute_avg_64(MATRIX x, int np, int d, VECTOR c,type den, VECTOR ris);
 extern void vector_sum_64(MATRIX x, int offset, int n,VECTOR V);
 
@@ -274,8 +274,10 @@ void volitive_movement(params* input, support* sup) {
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;
 		
-		euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
-		//euclidian_distance_64(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//type dist_x_i_B2=0;
+		euclidian_distance_64(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//printf("valore c : %lf ... valore nams : %lf \n",dist_x_i_B,dist_x_i_B2);
 		
 		if (dist_x_i_B == 0) continue;
 		for (int j = 0; j<input->d; j++)
@@ -313,9 +315,13 @@ void instincitve_movement(params* input, support* sup) {
 
 void alimentation_operator(params* input, support* sup) {
 	type min_delta_f = sup->delta_f[0];
+	/*
 	for(int i=0;i<input->np;++i)
 		if(sup->delta_f[i]<min_delta_f) min_delta_f=sup->delta_f[i];
-	//min_vector_64(sup->delta_f, input->np, &min_delta_f);	//rinominare in min
+	*/
+	//type min_delta_f2=sup->delta_f[0];
+	min_vector_64(sup->delta_f, input->np, &min_delta_f);
+	//printf("valore c : %lf ... valore nasm: %lf \n",min_delta_f,min_delta_f2);
     if (min_delta_f == 0) return;
     sup->w_old = sup->w_sum;
     sup->w_sum = 0;

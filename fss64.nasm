@@ -13,49 +13,41 @@ global min_vector_64
 min_vector_64 :
 	start
 
-	mov     rax,rdi                 ; x
-	mov     rdi,rsi                 ; n
-	sub     rdi,UNROLL_MAX-1        ; gestione vettore non multiplo
-	vmovapd ymm0,[rax]              ; primi quattro elementi (in teoria)
-	mov 	rsi, 4                  ; i=4
+    vmovapd ymm0,[rdi]
+    mov     rax,0
+    sub     rsi,3
 
 fori_min:
-    vmovapd ymm1,[rax+rsi*8]        ; xmm1<-x[...]
-	vminpd 	ymm0,ymm1               ; confronto ymm0 ymm1
+    vmovapd ymm1,[rdi+rax*8]
+    vminpd  ymm0,ymm1
+    add     rax,4
+    cmp     rax,rsi
+    jl      fori_min
 
-    vmovapd ymm1,[rax+rsi*8+32]     ; UNROLL    
-	vminpd 	ymm0,ymm1
+    add     rsi,3
 
-	add	    rsi,UNROLL_MAX          ; i+=UNROLL
+    vperm2f128 ymm1,ymm0,ymm0,00010001b
+    vminpd     ymm0,ymm1
+    vmovapd    xmm1,xmm0
+    vshufpd    xmm0,xmm0,01b
+    vminpd     xmm0,xmm1
+    
+    cmp    rax,rsi
+    jge    end_min
 
-	cmp 	rsi,rdi                 ; i<n-7?
-	jl 	    fori_min
+forino_min:
 
+    vmovq   xmm1,[rdi+rax*8]
+    vminsd  xmm0,xmm1
+    inc     rax
+    cmp     rax,rsi
+    jl      forino_min
 
-	add 	rdi,UNROLL_MAX-1        ; ripristino n
+end_min:
 
+    vmovq   [rdx],xmm0
 
-
-                                            ; riduzione vettore
-	vmovapd     ymm1,ymm0                   ; copia su ymm1
-	vperm2f128  ymm0,ymm0,ymm0,00110000b    ; permutazione dei 128 bit
-	vminpd 	    ymm0,ymm1                   
-    vmovapd     ymm1,ymm0                   ; copia su ymm1
-    vshufpd     xmm1,xmm1,01b               ; per confrontare gli ultimi due double si passa
-	vminpd 	    xmm0,xmm1                   ; agli xmm e si usa shufpd per invertire i 64 bit
-
-	cmp 	rsi,rdi                 ; i<n? 
-	jge 	end_min                 ; gestione caso lunghezza multipla di 8
-
-forino_min:                         ; replica codice per versione scalare double
-	vmovq 	xmm1,[rax+rsi*8]    	; muovo un double in xmm1. Nota : la v sembrerebbe non necessaria ma dovrebbe impedire il context switch evitando di incorrere nella penalità    
-	vminpd 	xmm0, xmm1				; la v è presente per lo stesso ragionamento di sopra
-	add	    rsi,1
-    cmp     rsi,rdi
-	jl	    forino_min
-
-end_min:                            ; caricamento del minimo in memoria
-	vmovq 	[rdx], xmm0			
+		
 
 	stop
 	
@@ -142,58 +134,48 @@ global euclidian_distance_64
 euclidian_distance_64:
     start
     
-    mov     rax,rdi             ; x
-    mov     rbx,rsi             ; offset
-    mov     rdi,rcx             ; d
-    mov     rcx,rdx             ; y
-    imul    rbx,8               ; offset in versione byte
-    add     rax,rbx             ; indirizzo del vettore target nella matrice
-    
-    sub     rdi,UNROLL_EUC-1    ; gestione vettore non multiplo di 8
-    
-    vxorpd  xmm0,xmm0,xmm0          ; ret=0
-    mov     rsi,0               ; i=0
-fori_euc:   
-    vmovapd ymm1,[rax+rsi*8]     ; xmm1<- x[...]
-    vmovapd ymm2,[rcx+rsi*8]     ; xmm2<- x[...]
-    vsubpd  ymm1,ymm2            ; (x-y)
-    vmulpd  ymm1,ymm1            ; (x-y)^2
-    vaddpd  ymm0,ymm1            ; ret+=(x-y)^2
+    imul    rsi,8
+    add     rdi,rsi
 
-    vmovapd ymm1,[rax+rsi*8+32]  ; UNROLL
-    vmovapd xmm2,[rcx+rsi*8+32]
+    mov     rax,0
+    sub     rcx,3
+
+    vxorpd ymm0,ymm0
+
+fori_euc:
+    vmovapd ymm1,[rdi+rax*8]
+    vmovapd ymm2,[rdx+rax*8]
     vsubpd  ymm1,ymm2
     vmulpd  ymm1,ymm1
     vaddpd  ymm0,ymm1
     
-    add    rsi,UNROLL_EUC       ; i+=8
-    cmp    rsi,rdi              ; i<n-7?
-    jl     fori_euc
-    
-    add    rdi,UNROLL_EUC-1        ; i+=8
-    
-    vhaddpd     ymm0,ymm0                   ; riduzione di ymm0
-    vperm2f128  ymm2,ymm0,ymm0,00000011b
-    vaddsd      xmm0,xmm2
-        
-    cmp   rsi,rdi               ; caso vettore multiplo di 8
-    jge   end_euc
-    
-forino_euc:                     ; replica scalare della sezione precedente
-    vmovq xmm1,[rax+rsi*8]
-    vmovq xmm2,[rcx+rsi*8]
-    vsubpd xmm1,xmm2
-    vmulpd xmm1,xmm1
-    vaddpd xmm0,xmm1
-    add rsi,1
-    cmp rsi,rdi
-    jl forino_euc
-    
-end_euc:                        
-    vsqrtpd xmm0,xmm0            ; sqrt(ret)
-    
-    vmovq   [r8],xmm0
-    
+    add rax,4
+    cmp rax,rcx
+    jl fori_euc
+
+
+    add rcx,3
+
+    vhaddpd ymm0,ymm0,ymm0
+    vperm2f128 ymm2,ymm0,ymm0,00010001b
+    vaddpd xmm0,xmm2
+
+    cmp rax,rcx
+    jge end_euc
+
+forino_euc:
+    vmovq   xmm1,[rdi+rax*8]
+    vmovq   xmm2,[rdx+rax*8]
+    vsubsd  xmm1,xmm2
+    vmulsd  xmm1,xmm1
+    vaddsd  xmm0,xmm1
+    inc     rax
+    cmp     rax,rcx
+    jl      fori_euc
+
+end_euc:
+    vsqrtsd   xmm0,xmm0
+    vmovq   [r8],xmm0    
     stop
 
 
