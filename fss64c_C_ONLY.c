@@ -286,9 +286,9 @@ void volitive_movement(params* input, support* sup) {
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;
 		
-		//euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
 		//type dist_x_i_B2=0;
-		euclidian_distance_64(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//euclidian_distance_64(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
 		//printf("valore c : %lf ... valore nams : %lf \n",dist_x_i_B,dist_x_i_B2);
 		
 		if (dist_x_i_B == 0) continue;
@@ -306,8 +306,8 @@ void instincitve_movement(params* input, support* sup) {
 	for(int i=0;i<input->d;++i)
 		sup->V[i]=0;
 
-	compute_avg_64(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
-	//compute_weighted_avg(input->np,input->d,sup->V,sup->delta_x,sup->delta_f,sup->f_sum);
+	//compute_avg_64(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
+	compute_weighted_avg(input->np,input->d,sup->V,sup->delta_x,sup->delta_f,sup->f_sum);
 
 	/*
 	MATRIX tmp = alloc_matrix(input->np,input->d);
@@ -343,13 +343,12 @@ void instincitve_movement(params* input, support* sup) {
 
 void alimentation_operator(params* input, support* sup) {
 	type min_delta_f = sup->delta_f[0];
-	/*
+	
 	for(int i=0;i<input->np;++i)
 		if(sup->delta_f[i]<min_delta_f) min_delta_f=sup->delta_f[i];
-	*/
 	
 	//type min_delta_f2=sup->delta_f[0];
-	min_vector_64(sup->delta_f, input->np, &min_delta_f);
+	//min_vector_64(sup->delta_f, input->np, &min_delta_f);
 	//printf("valore c : %lf ... valore nasm: %lf \n",min_delta_f,min_delta_f2);
     if (min_delta_f == 0) return;
     sup->w_old = sup->w_sum;
@@ -379,16 +378,15 @@ void alimentation_operator(params* input, support* sup) {
 type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 	type quad=0;
 	type scalar=0;
-	/*
+	
 	for(int j=0;j<d;++j) {
 		quad+=x[i*d+j]*x[i*d+j];
 		scalar+=x[i*d+j]*c[j];
 	}
-	*/
 	//type quad2=0,scalar2=0;
 	
 
-	eval_f_64(x, d, c, i*d, &quad, &scalar);
+	//eval_f_64(x, d, c, i*d, &quad, &scalar);
 	//printf(" valore c : %lf ... %lf || valore nasm : %lf ... %lf \n",quad,scalar,quad2,scalar2);
 	return expf(quad) + quad- scalar;
 }

@@ -133,8 +133,8 @@ euclidian_distance_64:
     vxorpd ymm0,ymm0
 
 fori_euc:
-    vmovapd ymm1,[rdi+rax*8]
-    vmovapd ymm2,[rdx+rax*8]
+    vmovupd ymm1,[rdi+rax*8]
+    vmovupd ymm2,[rdx+rax*8]
     vsubpd  ymm1,ymm2
     vmulpd  ymm1,ymm1
     vaddpd  ymm0,ymm1
@@ -161,7 +161,7 @@ forino_euc:
     vaddsd  xmm0,xmm1
     inc     rax
     cmp     rax,rcx
-    jl      fori_euc
+    jl      forino_euc
 
 end_euc:
     vsqrtsd   xmm0,xmm0
@@ -199,12 +199,12 @@ eval_f_64:
 
 
 fori_f:
-    vmovapd ymm4,[rdi+rax*8]
-    vmovapd ymm2,ymm4
+    vmovupd ymm4,[rdi+rax*8]
+    vmovupd ymm2,ymm4
     vmulpd  ymm2,ymm2
     vaddpd  ymm0,ymm2
 
-    vmovapd ymm3,[rdx+rax*8]
+    vmovupd ymm3,[rdx+rax*8]
     vmulpd  ymm3,ymm4
     vaddpd  ymm1,ymm3
 
