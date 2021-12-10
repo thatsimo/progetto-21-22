@@ -260,79 +260,58 @@ global compute_avg_64
     ; rsi = np
     ; rdx = d
     ; rcx = c
-    ; r8 = den
-    ; r9 = ris
+    ; r8 = ris
+    ; xmm0 = den
     UNROLL_W equ 8
 compute_avg_64:
 
     start
-    mov rax,rdi     ; x
-    mov rbx,rcx     ; c
-    mov r10,rdx     ; d
-    mov r11,rsi     ; np
     
+     
+    vbroadcastsd    ymm0,xmm0
+       
+    mov rax,0                       ; i=0
 
-    vbroadcastsd ymm0,[r8]
-    
-    mov rsi,0
-    
-    
-foriw:
-    
-    mov             rdi,0
-    vbroadcastsd    ymm7,[rbx+rsi*8]
-    
-    
-    vdivpd  ymm7,ymm0
-    
-    mov     rdx,r10
-    imul    rdx,rsi
+fori_wa:
+    mov          rbx,0              ; j=0
+    vbroadcastsd ymm1,[rcx+rax*8]
+    vdivpd       ymm1,ymm0
+    mov          r10,rdx
+    imul         r10,rax            ; i*d
+    sub          rdx,3
+forj_wa:
+    mov         r11,r10
+    add         r11,rbx             ; i*d+j
+    vmovupd     ymm2,[rdi+r11*8]
+    vmulpd      ymm2,ymm1
+    vaddpd      ymm2,[r8+rbx*8]
+    vmovupd     [r8+rbx*8],ymm2
 
-    sub     r10,UNROLL_W-1
-forjw:
-    
-    add     rdx,rdi
-    vmovupd ymm1,[rax+rdx*8]
-    sub     rdx,rdi
-    vmulpd  ymm1,ymm7
-    vaddpd  ymm1,[r9+rdi*8]
-    vmovupd [r9+rdi*8],ymm1
+    add         rbx,4
+    cmp         rbx,rdx
+    jl          forj_wa
 
+    add         rdx,3
 
-    add     rdx,rdi
-    vmovupd ymm1,[rax+rdx*8+32]
-    sub     rdx,rdi
-    vmulpd  ymm1,ymm7
-    vaddpd  ymm1,[r9+rdi*8+32]
-    vmovupd [r9+rdi*8+32],ymm1
-    
-    add     rdi,UNROLL_W
-    cmp     rdi,r10
-    jl      forjw
+    cmp         rbx,rdx
+    jge         end_forj_wa
 
-    add     r10,UNROLL_W-1
+forino_wa:
+    mov         r11,r10 
+    add         r11,rbx             ; i*d+j
+    vmovq       xmm2,[rdi+r11*8]
+    vmulsd      xmm2,xmm1
+    vaddsd      xmm2,[r8+rbx*8]
+    vmovq       [r8+rbx*8],xmm2
 
-    cmp     rdi,r10
-    jge     endforjw
-    
-forinow:
-    add     rdx,rdi
-    vmovq   xmm1,[rax+rdx*8]
-    sub     rdx,rdi
-    vmulsd  xmm1,xmm7
-    vaddsd  xmm1,[r9+rdi*8]
-    vmovq   [r9+rdi*8],xmm1
-    
-    inc rdi
-    cmp rdi,r10
-    jl forinow
-    
+    inc         rbx
+    cmp         rbx,rdx
+    jl          forino_wa
 
-endforjw:
+end_forj_wa:
 
-    inc rsi 
-    cmp rsi,r11
-    jl  foriw
-
+    inc         rax
+    cmp         rax,rsi
+    jl          fori_wa
 
     stop

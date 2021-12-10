@@ -266,10 +266,22 @@ void volitive_movement(params* input, support* sup) {
 
     for (int i=0;i<input->d;++i) 
 		sup->V[i]=0;
+
+	/*
+	VECTOR tmp = alloc_vector(input->d);
+	for (int i=0;i<input->d;++i) 
+		tmp[i]=0;
+	*/
+
+	if(sup->w_sum!=0)
+    	compute_avg_64(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
+	//compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
+
+	/*
+	for(int j=0;j<input->d;++j)
+		printf("valore c : %lf ... valore nasm : %lf \n",sup->V[j],tmp[j]);
+	*/
 	
-    //compute_avg_64(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
-	compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
-	//printf("ciao\n");
 	type sgn = (sup->w_old - sup->w_sum < 0 ) ? -1 : 1;
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;
