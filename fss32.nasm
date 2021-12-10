@@ -21,14 +21,14 @@ min_vector_32:
 	mov     eax,[ebp+x]             ; x
 	mov     edi,[ebp+n]             ; n
 	sub     edi,UNROLL_MIN-1        ; gestione vettore non multiplo
-	movaps 	xmm0,[eax]              ; primi quattro elementi
+	movups 	xmm0,[eax]              ; primi quattro elementi
 	mov 	esi, 4                  ; i=4
 
 fori_min:
-    movaps 	xmm1,[eax+esi*4]        ; xmm1<-x[...]
+    movups 	xmm1,[eax+esi*4]        ; xmm1<-x[...]
 	minps 	xmm0,xmm1               ; confronto xmm0 xmm1
 
-    movaps 	xmm1,[eax+esi*4+16]     ; UNROLL    
+    movups 	xmm1,[eax+esi*4+16]     ; UNROLL    
 	minps 	xmm0,xmm1
 
 	add	    esi,UNROLL_MIN          ; i+=UNROLL
@@ -40,10 +40,10 @@ fori_min:
 	add 	edi,UNROLL_MIN-1        ; ripristino n
 
 
-	movaps 	xmm1,xmm0               ; riduzione vettore
+	movups 	xmm1,xmm0               ; riduzione vettore
 	shufps 	xmm1,xmm0,00001110b
 	minps 	xmm0,xmm1
-	movaps 	xmm1,xmm0
+	movups 	xmm1,xmm0
 	shufps 	xmm1,xmm1,00000001b
 	minps 	xmm0,xmm1               ; primo elemento di xmm0
                                     ; per la parte scalare
@@ -97,14 +97,14 @@ euclidian_distance_32:
     xorps   xmm0,xmm0           ; ret=0
     mov     esi,0               ; i=0
 fori_euc:   
-    movaps xmm1,[eax+esi*4]     ; xmm1<- x[...]
-    movaps xmm2,[ecx+esi*4]     ; xmm2<- x[...]
+    movups xmm1,[eax+esi*4]     ; xmm1<- x[...]
+    movups xmm2,[ecx+esi*4]     ; xmm2<- x[...]
     subps  xmm1,xmm2            ; (x-y)
     mulps  xmm1,xmm1            ; (x-y)^2
     addps  xmm0,xmm1            ; ret+=(x-y)^2
 
-    movaps xmm1,[eax+esi*4+16]  ; UNROLL
-    movaps xmm2,[ecx+esi*4+16]
+    movups xmm1,[eax+esi*4+16]  ; UNROLL
+    movups xmm2,[ecx+esi*4+16]
     subps  xmm1,xmm2
     mulps  xmm1,xmm1
     addps  xmm0,xmm1
@@ -177,25 +177,25 @@ eval_f_32:
     
 fori_exp:
 
-    movaps  xmm2,[eax+esi*4]    ; xmm2 <- x[...]
-    movaps  xmm3,xmm2           ; duplicazione xmm2 in xmm3
+    movups  xmm2,[eax+esi*4]    ; xmm2 <- x[...]
+    movups  xmm3,xmm2           ; duplicazione xmm2 in xmm3
      
     mulps   xmm2,xmm2           ; x^2
     addps   xmm0,xmm2           ; quad+=x^2    
     
-    movaps  xmm4,[ebx+esi*4]    ; xmm4 <- c[...]
+    movups  xmm4,[ebx+esi*4]    ; xmm4 <- c[...]
     mulps   xmm3,xmm4           ; x*c 
     addps   xmm1,xmm3           ; scalar+=x*c
 
 
 
-    movaps  xmm2,[eax+esi*4+16] ; UNROLL
-    movaps  xmm3,xmm2
+    movups  xmm2,[eax+esi*4+16] ; UNROLL
+    movups  xmm3,xmm2
      
     mulps   xmm2,xmm2
     addps   xmm0,xmm2
     
-    movaps  xmm4,[ebx+esi*4+16]
+    movups  xmm4,[ebx+esi*4+16]
     mulps   xmm3,xmm4
     addps   xmm1,xmm3
      
@@ -292,18 +292,18 @@ foriw:
     sub ecx,7
 forjw:
     add edx,edi
-    movaps xmm1,[eax+edx*4]
+    movups xmm1,[eax+edx*4]
     sub edx,edi
     mulps xmm1,xmm7
     addps xmm1,[esp+edi*4]
-    movaps [esp+edi*4],xmm1
+    movups [esp+edi*4],xmm1
 
     add edx,edi
-    movaps xmm1,[eax+edx*4+16]
+    movups xmm1,[eax+edx*4+16]
     sub edx,edi
     mulps xmm1,xmm7
     addps xmm1,[esp+edi*4+16]
-    movaps [esp+edi*4+16],xmm1
+    movups [esp+edi*4+16],xmm1
     
     add edi, 8
     cmp edi,ecx
@@ -320,7 +320,7 @@ forinow:
     sub edx,edi
     mulss xmm1,xmm7
     addss xmm1,[esp+edi*4]
-    movaps [esp+edi*4],xmm1
+    movups [esp+edi*4],xmm1
     
     inc edi
     cmp edi,ecx
@@ -348,62 +348,51 @@ section .bss
 section .text
 
 global vector_sum_32
-    x_vs equ 8
-    offset_vs equ 12
-    n_vs equ 16
-    v_vs equ 20
-
-    UNROLL_VS equ 8
-
+	x_vs equ 8
+	offset_vs equ 12
+	d_vs equ 16
+	v_vs equ 20
 vector_sum_32:
+	start
 
-    start
-
-
-    mov     eax,[ebp+x_vs]          ; x
-    mov     ebx,[ebp+offset_vs]     ; offset
-    imul    ebx,4                   ; porta offset a versione byte
-    add     eax,ebx                 ; porta l'indice alla posizione del vettore target
-
-    mov     ebx,[ebp+v_vs]          ; v
-
-    mov     edi,[ebp+n_vs]          ; n
-    sub     edi,UNROLL_VS-1         ; unroll
-
-    mov     esi,0                   ; i=0
+	mov esi,0			; i=0
+	mov eax,[ebp+x_vs]		; x
+	mov ecx,[ebp+offset]		; offset
+	imul ecx,4			
+	add eax,ecx			; x[i*d]
+	mov ebx,[ebp+v_vs]		; v
+	mov edi,[ebp+d_vs]		; d
+	sub edi,3			; d-3
+	
 fori_vs:
+	movups xmm0,[eax+esi*4]
+	movups xmm1,[ebx+esi*4]
+	
+	addps  xmm0,xmm1
+	movups [eax+esi*4],xmm0
+	
+	add esi,4
+	cmp esi,edi
+	jl fori_vs
 
-    movaps  xmm0,[ebx+esi*4]        ; v[...]
-    addps   xmm0,[eax+esi*4]        ; somma v[...] con x[...]
-    movaps  [eax+esi*4],xmm0        ; carica il risultato su x[...] in memoria
+	add edi,3
 
-    movaps  xmm0,[ebx+esi*4+16]     ; UNROLL
-    addps   xmm0,[eax+esi*4+16]
-    movaps  [eax+esi*4+16],xmm0
+	cmp esi,edi
+	jge end_vs
 
-    add     esi,UNROLL_VS           ; i+=8
-    cmp     esi,edi                 ; i<n-7?
-    jl      fori_vs
-
-
-    add     edi,UNROLL_VS-1         ; ripristino n
-
-    cmp     esi,edi                 ; i<n?
-    jge     end_vs
-    
-forino_vs:                          ; gestione caso vettore non multiplo di 8
-    movss   xmm0,[ebx+esi*4]    
-    addss   xmm0,[eax+esi*4]
-    movss   [eax+esi*4],xmm0
-
-    inc     esi
-    cmp     esi,edi
-    jl      forino_vs
-    
+forino_vs:
+	movss xmm0,[eax+esi*4]
+	movss xmm1,[ebx+esi*4]
+	
+	addss xmm0,xmm1
+	movss [eax+esi*4],xmm0
+	inc esi
+	cmp esi,edi
+	jl forino_vs
 
 end_vs:
 
-    stop
+	stop
 
 
 

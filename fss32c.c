@@ -182,8 +182,8 @@ void update_parameters(params* input, support* sup) {
 	sup->stepind_curr = sup->stepind_curr - input->stepind / input->iter;
 	sup->stepvol_curr = sup->stepvol_curr - input->stepvol / input->iter; 
 }
-/*INUTILIZZATO
-void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, MATRIX num_2, type den) {
+
+void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, VECTOR num_2, type den) {
     for (int i = 0; i < d; ++i)			// inizializzazione vettore accumulatore
         acc[i] = 0;
     if (den == 0) return;               // check denominatore diverso da zero
@@ -191,23 +191,48 @@ void compute_weighted_avg(int np, int d, VECTOR acc, MATRIX num_1, MATRIX num_2,
         for (int j = 0; j < d; j++)
             acc[j] += num_1[i*d+j] * (num_2[i]/den);
 }
-*/
+
+void euclidian_distance(MATRIX x, int offset, VECTOR v,int d,type* dist) {
+	type ret=0;
+	for(int j=0;j<d;++j)
+		ret+=(x[offset+j]-v[j])*(x[offset+j]-v[j]);
+	*dist=sqrt(ret);
+}
 
 void volitive_movement(params* input, support* sup) {
 	if( sup->w_sum == 0) {
 		sup->w_sum = sup->w_old;
 		return;
 	}
+	
 
     for (int i=0;i<input->d;++i) 
 		sup->V[i]=0;
-	
-    compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
 
+	/*
+	VECTOR tmp = alloc_vector(input->d);
+	for (int i=0;i<input->d;++i) 
+		tmp[i]=0;
+	*/
+
+	if(sup->w_sum!=0)
+    	compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
+		//compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
+
+	/*
+	for(int j=0;j<input->d;++j)
+		printf("valore c : %lf ... valore nasm : %lf \n",sup->V[j],tmp[j]);
+	*/
+	
 	type sgn = (sup->w_old - sup->w_sum < 0 ) ? -1 : 1;
 	for (int i = 0; i<input->np; i++) {
 		type dist_x_i_B=0;
+		
+		//euclidian_distance(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//type dist_x_i_B2=0;
 		euclidian_distance_32(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+		//printf("valore c : %lf ... valore nams : %lf \n",dist_x_i_B,dist_x_i_B2);
+		
 		if (dist_x_i_B == 0) continue;
 		for (int j = 0; j<input->d; j++)
 			input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
@@ -224,20 +249,49 @@ void instincitve_movement(params* input, support* sup) {
 		sup->V[i]=0;
 
 	compute_avg_32(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
+	//compute_weighted_avg(input->np,input->d,sup->V,sup->delta_x,sup->delta_f,sup->f_sum);
 
-	for (int i = 0; i < np-3; i+=4) {
+	/*
+	MATRIX tmp = alloc_matrix(input->np,input->d);
+	for (int i = 0; i < np; i++)
+		for(int j=0;j<d;++j)
+			tmp[i*d+j]=input->x[i*input->d+j];
+	*/
+	//for (int i = 0; i < np; i++)
+	//	for(int j=0;j<d;++j)
+	//		input->x[i*input->d+j]+=sup->V[j];
+
+	
+
+	for(int i=0;i<np;++i)
 		vector_sum_32(input->x,i*d,d,sup->V);
-		vector_sum_32(input->x,i*d+d,d,sup->V);
-		vector_sum_32(input->x,i*d+d*2,d,sup->V);
-		vector_sum_32(input->x,i*d+d*3,d,sup->V);
+
+	/*
+	for (int i = 0; i < np; i++)
+		for(int j=0;j<d;++j)
+			printf("valore c : %lf ... valore nasm : %lf \n",input->x[i*input->d+j],tmp[i*d+j]);
+	*/
+	/*
+	for (int i = 0; i < np-3; i+=4) {
+		vector_sum_64(input->x,i*d,d,sup->V);
+		vector_sum_64(input->x,i*d+d,d,sup->V);
+		vector_sum_64(input->x,i*d+d*2,d,sup->V);
+		vector_sum_64(input->x,i*d+d*3,d,sup->V);
 	}
 	for(int i=(np/4)*4;i<np;++i)
-		vector_sum_32(input->x,i*d,d,sup->V);
+		vector_sum_64(input->x,i*d,d,sup->V);
+		*/
 }
 
 void alimentation_operator(params* input, support* sup) {
 	type min_delta_f = sup->delta_f[0];
-	min_vector_32(sup->delta_f, input->np, &min_delta_f);	//rinominare in min
+	
+	//for(int i=0;i<input->np;++i)
+	//	if(sup->delta_f[i]<min_delta_f) min_delta_f=sup->delta_f[i];
+	
+	//type min_delta_f2=sup->delta_f[0];
+	min_vector_32(sup->delta_f, input->np, &min_delta_f);
+	//printf("valore c : %lf ... valore nasm: %lf \n",min_delta_f,min_delta_f2);
     if (min_delta_f == 0) return;
     sup->w_old = sup->w_sum;
     sup->w_sum = 0;
@@ -266,7 +320,17 @@ void alimentation_operator(params* input, support* sup) {
 type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 	type quad=0;
 	type scalar=0;
+	
+
+	//for(int j=0;j<d;++j) {
+	//	quad+=x[i*d+j]*x[i*d+j];
+	//	scalar+=x[i*d+j]*c[j];
+	//}
+	//type quad2=0,scalar2=0;
+	
+
 	eval_f_32(x, d, c, i*d, &quad, &scalar);
+	//printf(" valore c : %lf ... %lf || valore nasm : %lf ... %lf \n",quad,scalar,quad2,scalar2);
 	return expf(quad) + quad- scalar;
 }
 
@@ -274,7 +338,8 @@ type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 void individual_movement(int i, params* input, support* sup) {
 	for (int j = 0; j < input->d; ++j) {
         sup->x_new[j] = input->x[i*input->d+j] + ((input->r[sup->r_i++])*2-1) * sup->stepind_curr;
-    }				
+    }	
+				
 	
 	type f_new_i = evaluate_f(sup->x_new, input->c, 0, input->d);
 	type delta_f_i = f_new_i - sup->f_curr[i];
@@ -321,15 +386,21 @@ void fss(params* input) {
 		sup->f_curr[i] = evaluate_f(input->x, input->c, i, input->d);
 
 	}
+	
 
 	for (int i = 0; i < input->iter; ++i) {
 		sup->f_sum = 0;
 		for (int j=0;j < input->np;++j)	
 			individual_movement(j, input, sup);
+		
 		alimentation_operator(input, sup);
+		
 		instincitve_movement(input, sup);
+
 		volitive_movement(input, sup);
+
 		update_parameters(input, sup);
+	
 	}
 
 	find_and_assign_minimum(input, sup);
@@ -343,7 +414,7 @@ int main(int argc, char** argv) {
 	char* xfilename = NULL;
 	int i, j, k;
 	clock_t t;
-	float time;
+	double time;
 	
 	//
 	// Imposta i valori di default dei parametri
@@ -356,7 +427,7 @@ int main(int argc, char** argv) {
 	input->c = NULL;
 	input->r = NULL;
 	input->np = 25;
-	input->d = 8;
+	input->d = 7;
 	input->iter = 350;
 	input->stepind = 1;
 	input->stepvol = 0.1;
@@ -368,6 +439,7 @@ int main(int argc, char** argv) {
 	//
 	// Visualizza la sintassi del passaggio dei parametri da riga comandi
 	//
+
 	if(argc <= 1){
 		printf("%s -c <c> -r <r> -x <x> -np <np> -si <stepind> -sv <stepvol> -w <wscale> -it <itmax> [-s] [-d]\n", argv[0]);
 		printf("\nParameters:\n");
@@ -495,18 +567,22 @@ int main(int argc, char** argv) {
 		printf("Invalid value of np parameter!\n");
 		exit(1);
 	}
+
 	if(input->stepind < 0){
 		printf("Invalid value of si parameter!\n");
 		exit(1);
 	}
+
 	if(input->stepvol < 0){
 		printf("Invalid value of sv parameter!\n");
 		exit(1);
 	}
+
 	if(input->wscale < 0){
 		printf("Invalid value of w parameter!\n");
 		exit(1);
 	}
+
 	if(input->iter < 0){
 		printf("Invalid value of it parameter!\n");
 		exit(1);
@@ -529,7 +605,7 @@ int main(int argc, char** argv) {
 	}
 
 	// COMMENTARE QUESTA RIGA!
-//	prova(input);
+	//prova(input);
 	//
 
 	//
@@ -539,7 +615,7 @@ int main(int argc, char** argv) {
 	t = clock();
 	fss(input);
 	t = clock() - t;
-	time = ((float)t)/CLOCKS_PER_SEC;
+	time = ((double)t)/CLOCKS_PER_SEC;
 
 	if(!input->silent)
 		printf("FSS time = %.3f secs\n", time);
@@ -549,7 +625,7 @@ int main(int argc, char** argv) {
 	//
 	// Salva il risultato di xh
 	//
-	sprintf(fname, "xh32_%d_%d_%d.ds2", input->d, input->np, input->iter);
+	sprintf(fname, "xh64_%d_%d_%d.ds2", input->d, input->np, input->iter);
 	save_data(fname, input->xh, 1, input->d);
 	if(input->display){
 		if(input->xh == NULL)

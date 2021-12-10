@@ -78,7 +78,7 @@ vector_sum_64:
     imul rsi,8
     add rdi,rsi
 
-    sub rdx,UNROLL_VS-1
+    sub rdx,3
     mov rax,0
 
 
@@ -87,15 +87,13 @@ fori_ws:
     vaddpd   ymm0,[rcx+rax*8]
     vmovupd [rdi+rax*8],ymm0
 
-    vmovupd ymm0,[rdi+rax*8+32]
-    vaddpd   ymm0,[rcx+rax*8+32]
-    vmovupd [rdi+rax*8+32],ymm0
 
-    add rax,UNROLL_VS
+
+    add rax,4
     cmp rax,rdx
     jl fori_ws
 
-    add rdx,UNROLL_VS-1
+    add rdx,3
 
     cmp rax,rdx
     jge end_vs
@@ -104,7 +102,7 @@ forino_ws:
 
     vmovq xmm0,[rdi+rax*8]
     vaddsd xmm0,[rcx+rax*8]
-    vmovupd [rdi+rax*8],xmm0
+    vmovsd [rdi+rax*8],xmm0
 
     inc rax
     cmp rax,rdx

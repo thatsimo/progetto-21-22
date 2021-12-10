@@ -274,8 +274,8 @@ void volitive_movement(params* input, support* sup) {
 	*/
 
 	if(sup->w_sum!=0)
-    	//compute_avg_64(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
-		compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
+    	compute_avg_64(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
+		//compute_weighted_avg(input->np,input->d,sup->V,input->x,sup->W,sup->w_sum);
 
 	/*
 	for(int j=0;j<input->d;++j)
@@ -315,14 +315,14 @@ void instincitve_movement(params* input, support* sup) {
 		for(int j=0;j<d;++j)
 			tmp[i*d+j]=input->x[i*input->d+j];
 	*/
-	for (int i = 0; i < np; i++)
-		for(int j=0;j<d;++j)
-			input->x[i*input->d+j]+=sup->V[j];
+//	for (int i = 0; i < np; i++)
+//		for(int j=0;j<d;++j)
+//			input->x[i*input->d+j]+=sup->V[j];
 
 	
 
-	//for(int i=0;i<np;++i)
-	//	vector_sum_64(input->x,i*d,d,sup->V);
+	for(int i=0;i<np;++i)
+		vector_sum_64(input->x,i*d,d,sup->V);
 
 	/*
 	for (int i = 0; i < np; i++)
