@@ -484,7 +484,7 @@ int main(int argc, char** argv) {
 	input->c = NULL;
 	input->r = NULL;
 	input->np = 25;
-	input->d = 2;
+	input->d = 7;
 	input->iter = 350;
 	input->stepind = 1;
 	input->stepvol = 0.1;

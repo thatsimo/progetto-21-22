@@ -13,15 +13,15 @@ global min_vector_64
 min_vector_64 :
 	start
 
-    vmovapd ymm0,[rdi]
+    vmovupd ymm0,[rdi]
     mov     rax,0
     sub     rsi,UNROLL_MAX-1
 
 fori_min:
-    vmovapd ymm1,[rdi+rax*8]
+    vmovupd ymm1,[rdi+rax*8]
     vminpd  ymm0,ymm1
 
-    vmovapd ymm1,[rdi+rax*8+32]
+    vmovupd ymm1,[rdi+rax*8+32]
     vminpd  ymm0,ymm1
 
     add     rax,UNROLL_MAX
@@ -32,7 +32,7 @@ fori_min:
 
     vperm2f128 ymm1,ymm0,ymm0,00010001b
     vminpd     ymm0,ymm1
-    vmovapd    xmm1,xmm0
+    vmovupd    xmm1,xmm0
     vshufpd    xmm0,xmm0,01b
     vminpd     xmm0,xmm1
     
@@ -83,13 +83,13 @@ vector_sum_64:
 
 
 fori_ws:
-    vmovapd ymm0,[rdi+rax*8]
+    vmovupd ymm0,[rdi+rax*8]
     vaddpd   ymm0,[rcx+rax*8]
-    vmovapd [rdi+rax*8],ymm0
+    vmovupd [rdi+rax*8],ymm0
 
-    vmovapd ymm0,[rdi+rax*8+32]
+    vmovupd ymm0,[rdi+rax*8+32]
     vaddpd   ymm0,[rcx+rax*8+32]
-    vmovapd [rdi+rax*8+32],ymm0
+    vmovupd [rdi+rax*8+32],ymm0
 
     add rax,UNROLL_VS
     cmp rax,rdx
@@ -104,7 +104,7 @@ forino_ws:
 
     vmovq xmm0,[rdi+rax*8]
     vaddsd xmm0,[rcx+rax*8]
-    vmovapd [rdi+rax*8],xmm0
+    vmovupd [rdi+rax*8],xmm0
 
     inc rax
     cmp rax,rdx
@@ -147,8 +147,8 @@ fori_euc:
     vmulpd  ymm1,ymm1
     vaddpd  ymm0,ymm1
 
-    vmovapd ymm1,[rdi+rax*8+32]
-    vmovapd ymm2,[rdx+rax*8+32]
+    vmovupd ymm1,[rdi+rax*8+32]
+    vmovupd ymm2,[rdx+rax*8+32]
     vsubpd  ymm1,ymm2
     vmulpd  ymm1,ymm1
     vaddpd  ymm0,ymm1
@@ -223,12 +223,12 @@ fori_f:
     vaddpd  ymm1,ymm3
 
 
-    vmovapd ymm4,[rdi+rax*8+32]
-    vmovapd ymm2,ymm4
+    vmovupd ymm4,[rdi+rax*8+32]
+    vmovupd ymm2,ymm4
     vmulpd  ymm2,ymm2
     vaddpd  ymm0,ymm2
 
-    vmovapd ymm3,[rdx+rax*8+32]
+    vmovupd ymm3,[rdx+rax*8+32]
     vmulpd  ymm3,ymm4
     vaddpd  ymm1,ymm3
 
