@@ -15,16 +15,20 @@ min_vector_64 :
 
     vmovapd ymm0,[rdi]
     mov     rax,0
-    sub     rsi,3
+    sub     rsi,UNROLL_MAX-1
 
 fori_min:
     vmovapd ymm1,[rdi+rax*8]
     vminpd  ymm0,ymm1
-    add     rax,4
+
+    vmovapd ymm1,[rdi+rax*8+32]
+    vminpd  ymm0,ymm1
+
+    add     rax,UNROLL_MAX
     cmp     rax,rsi
     jl      fori_min
 
-    add     rsi,3
+    add     rsi,UNROLL_MAX-1
 
     vperm2f128 ymm1,ymm0,ymm0,00010001b
     vminpd     ymm0,ymm1
@@ -74,7 +78,7 @@ vector_sum_64:
     imul rsi,8
     add rdi,rsi
 
-    sub rdx,3
+    sub rdx,UNROLL_VS-1
     mov rax,0
 
 
@@ -83,11 +87,15 @@ fori_ws:
     vaddpd   ymm0,[rcx+rax*8]
     vmovapd [rdi+rax*8],ymm0
 
-    add rax,4
+    vmovapd ymm0,[rdi+rax*8+32]
+    vaddpd   ymm0,[rcx+rax*8+32]
+    vmovapd [rdi+rax*8+32],ymm0
+
+    add rax,UNROLL_VS
     cmp rax,rdx
     jl fori_ws
 
-    add rdx,3
+    add rdx,UNROLL_VS-1
 
     cmp rax,rdx
     jge end_vs
@@ -128,7 +136,7 @@ euclidian_distance_64:
     add     rdi,rsi
 
     mov     rax,0
-    sub     rcx,3
+    sub     rcx,UNROLL_EUC-1
 
     vxorpd ymm0,ymm0
 
@@ -138,13 +146,19 @@ fori_euc:
     vsubpd  ymm1,ymm2
     vmulpd  ymm1,ymm1
     vaddpd  ymm0,ymm1
+
+    vmovapd ymm1,[rdi+rax*8+32]
+    vmovapd ymm2,[rdx+rax*8+32]
+    vsubpd  ymm1,ymm2
+    vmulpd  ymm1,ymm1
+    vaddpd  ymm0,ymm1
     
-    add rax,4
+    add rax,UNROLL_EUC
     cmp rax,rcx
     jl fori_euc
 
 
-    add rcx,3
+    add rcx,UNROLL_EUC-1
 
     vhaddpd ymm0,ymm0,ymm0
     vperm2f128 ymm2,ymm0,ymm0,00010001b
@@ -195,7 +209,7 @@ eval_f_64:
     vxorpd ymm0,ymm0
     vxorpd ymm1,ymm1
 
-    sub rsi,3
+    sub rsi,UNROLL_EVALF-1
 
 
 fori_f:
@@ -208,11 +222,21 @@ fori_f:
     vmulpd  ymm3,ymm4
     vaddpd  ymm1,ymm3
 
-    add rax,4
+
+    vmovapd ymm4,[rdi+rax*8+32]
+    vmovapd ymm2,ymm4
+    vmulpd  ymm2,ymm2
+    vaddpd  ymm0,ymm2
+
+    vmovapd ymm3,[rdx+rax*8+32]
+    vmulpd  ymm3,ymm4
+    vaddpd  ymm1,ymm3
+
+    add rax,UNROLL_EVALF
     cmp rax,rsi
     jl fori_f
 
-    add rsi,3
+    add rsi,UNROLL_EVALF-1
 
     vhaddpd ymm0,ymm0,ymm0
     vperm2f128 ymm2,ymm0,ymm0,00010001b
@@ -262,7 +286,7 @@ global compute_avg_64
     ; rcx = c
     ; r8 = ris
     ; xmm0 = den
-    UNROLL_W equ 8
+    UNROLL_WA equ 8
 compute_avg_64:
 
     start
@@ -278,7 +302,7 @@ fori_wa:
     vdivpd       ymm1,ymm0
     mov          r10,rdx
     imul         r10,rax            ; i*d
-    sub          rdx,3
+    sub          rdx,UNROLL_WA-1
 forj_wa:
     mov         r11,r10
     add         r11,rbx             ; i*d+j
@@ -287,11 +311,16 @@ forj_wa:
     vaddpd      ymm2,[r8+rbx*8]
     vmovupd     [r8+rbx*8],ymm2
 
-    add         rbx,4
+    vmovupd     ymm2,[rdi+r11*8+32]
+    vmulpd      ymm2,ymm1
+    vaddpd      ymm2,[r8+rbx*8+32]
+    vmovupd     [r8+rbx*8+32],ymm2
+
+    add         rbx,UNROLL_WA
     cmp         rbx,rdx
     jl          forj_wa
 
-    add         rdx,3
+    add         rdx,UNROLL_WA-1
 
     cmp         rbx,rdx
     jge         end_forj_wa
