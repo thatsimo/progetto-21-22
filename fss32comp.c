@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include <xmmintrin.h>
+#include <omp.h>
+
 
 #define	type		float
 #define	MATRIX		type*
@@ -153,6 +155,22 @@ void update_parameters(params* input, support* sup) {
 	sup->stepvol_curr = sup->stepvol_curr - input->stepvol / input->iter; 
 }
 
+void inner_func(params* input, support* sup,int sgn, int da, int a) {
+		for(int i=da;i<a;++i) {
+			type dist_x_i_B=0;
+
+			euclidian_distance_32(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
+
+			if (dist_x_i_B == 0) return;
+
+			for (int j = 0; j<input->d; j++)
+				input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i+i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
+
+
+		}
+		
+}
+
 void volitive_movement(params* input, support* sup) {
 	if( sup->w_sum == 0) {
 		sup->w_sum = sup->w_old;
@@ -166,20 +184,16 @@ void volitive_movement(params* input, support* sup) {
     	compute_avg_32(input->x, input->np, input->d, sup->W,sup->w_sum,sup->V);
 
 	type sgn = (sup->w_old - sup->w_sum < 0 ) ? -1 : 1;
-
-	for (int i = 0; i<input->np; i++) {
-		type dist_x_i_B=0;
-		
-		euclidian_distance_32(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
-
-		if (dist_x_i_B == 0) continue;
-
-//		#pragma omp parallel for
-		for (int j = 0; j<input->d; j++)
-			input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
-		
-		sup->r_i++;
+	int np=input->np;
+	int unroll=20;
+	#pragma omp parallel for
+	for (int i = 0; i<np-(unroll-1); i+=unroll) {
+		inner_func(input,sup,sgn,0+i,i+unroll);
 	}
+	for(int i=(np/unroll)*unroll;i<np;++i)
+		inner_func(input,sup,sgn,i,i+1);
+	sup->r_i+=np;
+	
 }
 
 void instincitve_movement(params* input, support* sup) {
@@ -191,9 +205,9 @@ void instincitve_movement(params* input, support* sup) {
 		sup->V[i]=0;
 
 	compute_avg_32(sup->delta_x,input->np,input->d,sup->delta_f,sup->f_sum,sup->V);
-	
+	int unroll=32;
 	#pragma omp parallel for
-	for (int i = 0; i < np-15; i+=16) {
+	for (int i = 0; i < np-(unroll-1); i+=unroll) {
 		vector_sum_32(input->x,i*d,d,sup->V);
 		vector_sum_32(input->x,i*d+d,d,sup->V);
 		vector_sum_32(input->x,i*d+d*2,d,sup->V);
@@ -213,11 +227,32 @@ void instincitve_movement(params* input, support* sup) {
 		vector_sum_32(input->x,i*d+d*13,d,sup->V);
 		vector_sum_32(input->x,i*d+d*14,d,sup->V);
 		vector_sum_32(input->x,i*d+d*15,d,sup->V);
+
+		vector_sum_32(input->x,i*d+d*16,d,sup->V);
+		vector_sum_32(input->x,i*d+d*17,d,sup->V);
+		vector_sum_32(input->x,i*d+d*18,d,sup->V);
+		vector_sum_32(input->x,i*d+d*19,d,sup->V);
+
+		vector_sum_32(input->x,i*d+d*20,d,sup->V);
+		vector_sum_32(input->x,i*d+d*21,d,sup->V);
+		vector_sum_32(input->x,i*d+d*22,d,sup->V);
+		vector_sum_32(input->x,i*d+d*23,d,sup->V);
+
+		vector_sum_32(input->x,i*d+d*24,d,sup->V);
+		vector_sum_32(input->x,i*d+d*25,d,sup->V);
+		vector_sum_32(input->x,i*d+d*26,d,sup->V);
+		vector_sum_32(input->x,i*d+d*27,d,sup->V);
+
+		vector_sum_32(input->x,i*d+d*28,d,sup->V);
+		vector_sum_32(input->x,i*d+d*29,d,sup->V);
+		vector_sum_32(input->x,i*d+d*30,d,sup->V);
+		vector_sum_32(input->x,i*d+d*31,d,sup->V);
 	}
 
 //	#pragma omp parallel for
-	for(int i=(np/16)*16;i<np;++i)
+	for(int i=(np/unroll)*unroll;i<np;++i)
 		vector_sum_32(input->x,i*d,d,sup->V);
+
 }
 
 void alimentation_operator(params* input, support* sup) {
@@ -507,12 +542,11 @@ int main(int argc, char** argv) {
 		printf("Number of iterations [it]: %d\n", input->iter);
 	}
 
-	t = clock();
+	double tt = omp_get_wtime();
 	fss(input);
-	t = clock() - t;
-
-	time = ((double)t)/CLOCKS_PER_SEC;
-
+	
+	tt = omp_get_wtime() - tt;
+	time=tt;
 	if(!input->silent)
 		printf("FSS time = %.3f secs\n", time);
 	else

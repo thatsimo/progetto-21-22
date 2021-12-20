@@ -100,7 +100,7 @@ fori_euc:
     cmp    esi,edi              ; i<n-7?
     jl     fori_euc
     
-    add    edi,UNROLL_EUC        ; i+=8
+    add    edi,UNROLL_EUC-1        ; i+=8
     
     haddps xmm0,xmm0            ; riduzione di xmm0
     haddps xmm0,xmm0

@@ -6,15 +6,15 @@ section .bss
 section .text
 
 global min_vector_32
-    x equ 8
-	n equ 12
+    x_min equ 8
+	n_min equ 12
 	min equ 16
     UNROLL_MIN equ 8
 
 min_vector_32:
 	start
-	mov     eax,[ebp+x]             ; x
-	mov     edi,[ebp+n]             ; n
+	mov     eax,[ebp+x_min]             ; x
+	mov     edi,[ebp+n_min]             ; n
 	sub     edi,UNROLL_MIN-1        ; gestione vettore non multiplo
 	movups 	xmm0,[eax]              ; primi quattro elementi
 	mov 	esi, 4                  ; i=4
@@ -61,8 +61,8 @@ section .bss
 section .text
 
 global euclidian_distance_32
-    x equ 8
-    offset equ 12
+    x_euc equ 8
+    offset_euc equ 12
     y equ 16
     d equ 20
     dist equ 24
@@ -70,8 +70,8 @@ global euclidian_distance_32
 
 euclidian_distance_32:
     start    
-    mov     eax,[ebp+x]         ; x
-    mov     ebx,[ebp+offset]    ; offset
+    mov     eax,[ebp+x_euc]         ; x
+    mov     ebx,[ebp+offset_euc]    ; offset
     mov     ecx,[ebp+y]         ; y
     imul    ebx,4               ; offset in versione byte
     
@@ -100,7 +100,7 @@ fori_euc:
     cmp    esi,edi              ; i<n-7?
     jl     fori_euc
     
-    add    edi,UNROLL_EUC        ; i+=8
+    add    edi,UNROLL_EUC-1        ; i+=8
     
     haddps xmm0,xmm0            ; riduzione di xmm0
     haddps xmm0,xmm0
@@ -323,7 +323,7 @@ vector_sum_32:
 
 	mov esi,0			; i=0
 	mov eax,[ebp+x_vs]		; x
-	mov ecx,[ebp+offset]		; offset
+	mov ecx,[ebp+offset_vs]		; offset
 
 	imul ecx,4			
 	
