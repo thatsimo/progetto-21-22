@@ -9,7 +9,7 @@ global min_vector_32
     x_min equ 8
 	n_min equ 12
 	min equ 16
-    UNROLL_MIN equ 8
+    UNROLL_MIN equ 4
 
 min_vector_32:
 	start
@@ -17,14 +17,11 @@ min_vector_32:
 	mov     edi,[ebp+n_min]             ; n
 	sub     edi,UNROLL_MIN-1        ; gestione vettore non multiplo
 	movups 	xmm0,[eax]              ; primi quattro elementi
-	mov 	esi, 4                  ; i=4
+	mov 	esi, 0                  ; i=4
 
 fori_min:
     movups 	xmm1,[eax+esi*4]        ; xmm1<-x[...]
 	minps 	xmm0,xmm1               ; confronto xmm0 xmm1
-
-    movups 	xmm1,[eax+esi*4+16]     ; UNROLL    
-	minps 	xmm0,xmm1
 
 	add	    esi,UNROLL_MIN          ; i+=UNROLL
 
@@ -66,7 +63,7 @@ global euclidian_distance_32
     y equ 16
     d equ 20
     dist equ 24
-    UNROLL_EUC equ 8
+    UNROLL_EUC equ 4
 
 euclidian_distance_32:
     start    
@@ -88,12 +85,6 @@ fori_euc:
     subps  xmm1,xmm2            ; (x-y)
     mulps  xmm1,xmm1            ; (x-y)^2
     addps  xmm0,xmm1            ; ret+=(x-y)^2
-
-    movups xmm1,[eax+esi*4+16]  ; UNROLL
-    movups xmm2,[ecx+esi*4+16]
-    subps  xmm1,xmm2
-    mulps  xmm1,xmm1
-    addps  xmm0,xmm1
     
     add    esi,UNROLL_EUC       ; i+=8
 
@@ -136,7 +127,7 @@ global eval_f_32
        offset1 equ 20
        quad equ 24
        scalar equ 28
-       UNROLL_F equ 8
+       UNROLL_F equ 4
        
 eval_f_32:
     start
@@ -164,16 +155,6 @@ fori_exp:
     movups  xmm4,[ebx+esi*4]    ; xmm4 <- c[...]
     mulps   xmm3,xmm4           ; x*c 
     addps   xmm1,xmm3           ; scalar+=x*c
-
-    movups  xmm2,[eax+esi*4+16] ; UNROLL
-    movups  xmm3,xmm2
-     
-    mulps   xmm2,xmm2
-    addps   xmm0,xmm2
-    
-    movups  xmm4,[ebx+esi*4+16]
-    mulps   xmm3,xmm4
-    addps   xmm1,xmm3
      
     add     esi,UNROLL_F
     
@@ -253,7 +234,7 @@ foriw:
     imul edx,ecx
     imul edx,esi
 
-    sub ecx,7
+    sub ecx,3
 
 forjw:
     add edx,edi
@@ -265,21 +246,14 @@ forjw:
     addps xmm1,[esp+edi*4]
     movups [esp+edi*4],xmm1
 
-    add edx,edi
-    movups xmm1,[eax+edx*4+16]
 
-    sub edx,edi
-    mulps xmm1,xmm7
-
-    addps xmm1,[esp+edi*4+16]
-    movups [esp+edi*4+16],xmm1
     
-    add edi, 8
+    add edi, 4
 
     cmp edi,ecx
     jl forjw
     
-    add ecx,7
+    add ecx,3
     
     cmp edi,ecx
     jge endforjw

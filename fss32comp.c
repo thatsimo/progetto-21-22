@@ -161,7 +161,7 @@ void inner_func(params* input, support* sup,int sgn, int da, int a) {
 
 			euclidian_distance_32(input->x, i*input->d, sup->V, input->d,&dist_x_i_B);
 
-			if (dist_x_i_B == 0) return;
+			if (dist_x_i_B == 0) continue;
 
 			for (int j = 0; j<input->d; j++)
 				input->x[input->d*i+j] = input->x[input->d*i+j] + sgn * sup->stepvol_curr * input->r[sup->r_i+i] * ((input->x[input->d*i+j] - sup->V[j]) / dist_x_i_B);
@@ -295,30 +295,34 @@ type evaluate_f(MATRIX x, VECTOR c, int i, int d) {
 }
 
 
-void individual_movement(int i, params* input, support* sup) {
-	for (int j = 0; j < input->d; ++j) {
-        sup->x_new[j] = input->x[i*input->d+j] + ((input->r[sup->r_i++])*2-1) * sup->stepind_curr;
-    }	
+
+void individual_movement_inner(params* input, support* sup,int da, int a) {
+	VECTOR x_new=alloc_vector(input->d);
+	for(int i=da;i<a;++i) {
+		for (int j = 0; j < input->d; ++j) {
+        	x_new[j] = input->x[i*input->d+j] + ((input->r[sup->r_i+i*input->d+j])*2-1) * sup->stepind_curr;
+    	}	
 	
-	type f_new_i = evaluate_f(sup->x_new, input->c, 0, input->d);
-	type delta_f_i = f_new_i - sup->f_curr[i];
+		type f_new_i = evaluate_f(x_new, input->c, 0, input->d);
+		type delta_f_i = f_new_i - sup->f_curr[i];
 
-	if (delta_f_i < 0) {
-		sup->delta_f[i] = delta_f_i;
-		sup->f_curr[i] = f_new_i;
-		sup->f_sum = sup->f_sum + delta_f_i;
+		if (delta_f_i < 0) {
+			sup->delta_f[i] = delta_f_i;
+			sup->f_curr[i] = f_new_i;
+			//sup->f_sum = sup->f_sum + delta_f_i;
 
-	//	#pragma omp parallel for
-		for(int j = 0; j < input->d; ++j) {
-			sup->delta_x[i*input->d+j] = sup->x_new[j] - input->x[i*input->d+j];
-			input->x[i*input->d+j] = sup->x_new[j];	
+			for(int j = 0; j < input->d; ++j) {
+				sup->delta_x[i*input->d+j] = x_new[j] - input->x[i*input->d+j];
+				input->x[i*input->d+j] = x_new[j]; 
+			}
+		} else {
+			for (int j = 0; j < input->d; ++j) 
+				sup->delta_x[i*input->d+j] = 0;
+
+			sup->delta_f[i]=0;
 		}
-	} else {
-		for (int j = 0; j < input->d; ++j) 
-			sup->delta_x[i*input->d+j] = 0;
-
-		sup->delta_f[i]=0;
 	}
+	dealloc_matrix(x_new);
 }
 
 void fss(params* input) {
@@ -351,8 +355,18 @@ void fss(params* input) {
 	for (int i = 0; i < input->iter; ++i) {
 		sup->f_sum = 0;
 
-		for (int j=0;j < input->np;++j)	
-			individual_movement(j, input, sup);
+		int unroll=10;
+		#pragma omp parallel for
+		for(int j=0;j<input->np-(unroll-1);j+=unroll)
+			individual_movement_inner(input, sup,j+0,j+unroll);
+		
+		for(int j=(input->np/unroll)*unroll;j<input->np;++j)
+			individual_movement_inner(input, sup,j,j+1);
+		
+		sup->r_i+=input->np*input->d;
+
+		for(int k=0;k<input->np;++k)
+			sup->f_sum+=sup->delta_f[k];
 		
 		alimentation_operator(input, sup);
 		instincitve_movement(input, sup);
