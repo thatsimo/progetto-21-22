@@ -24,8 +24,8 @@ def dssave(ds, filename, dtype = 'f'):
 		array.array('I', [d, n]).tofile(datafile);
 		array.array(dtype, ds.reshape(np.prod(ds.shape))).tofile(datafile);
 
-d = 7; # 8 125 256
-nx = 735; # 64 735 768
+d = 256; # 8 125 256
+nx = 768; # 64 735 768
 iters = np.min([int(250*np.round(75*np.sqrt(d)/250,0)), int((2**31-1)/((nx*(d+1)+d)*8)/4)*4]); # 250 750 1250
 scale = np.power(10,-1*np.log10(d));
 
@@ -53,8 +53,8 @@ a = -1*scale;
 b = 1*scale;
 print("Genero il file x init.");
 ds = (np.random.rand(nx*d)*(b-a) + a).reshape((nx,d));
-dssave(ds, 'data/x32_'+str(d)+'.ds2', dtype='f');
-dssave(ds, 'data/x64_'+str(d)+'.ds2', dtype='d');
+dssave(ds, 'data/x32_'+str(d)+'_'+str(nx)+'.ds2', dtype='f');
+dssave(ds, 'data/x64_'+str(d)+'_'+str(nx)+'.ds2', dtype='d');
 del ds;
 
 def f(x): return np.exp(np.sum(x**2,axis=x.ndim-1))+ np.sum(x**2-c*x,axis=x.ndim-1);

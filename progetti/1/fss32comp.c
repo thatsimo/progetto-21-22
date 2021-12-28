@@ -566,7 +566,7 @@ int main(int argc, char** argv) {
 	else
 		printf("%.3f\n", time);
 
-	sprintf(fname, "xh64_%d_%d_%d.ds2", input->d, input->np, input->iter);
+	sprintf(fname, "xh32_%d_%d_%d.ds2", input->d, input->np, input->iter);
 	save_data(fname, input->xh, 1, input->d);
 
 	if(input->display){

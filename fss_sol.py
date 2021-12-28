@@ -3,8 +3,8 @@ import numpy as np
 import scipy as sc;
 import scipy.optimize;
 
-d = 8; #dimensioni
-nx = 64; #numero di pesci
+d = 256; #dimensioni
+nx = 768; #numero di pesci
 iters = 250; #iterazioni
 
 def dsload(filename, dtype = 'f'):
