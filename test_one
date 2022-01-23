@@ -3,13 +3,12 @@
 dims=( 8 125 256 );
 nps=( 64 735 768 );
 its=( 250 750 1250 );
-si=( 0.1 0.006 0.003 );
-sv=( 0.0125 0.0008 0.0004 );
-w=( 1.25 0.08 0.04 );
+sis=( 0.1 0.006 0.003 );
+svs=( 0.0125 0.0008 0.0004 );
+ws=( 1.25 0.08 0.04 );
 
 archs=( 32 64 32omp 64omp );
 
-#Il test esegue le seguenti configurazioni, assicurarsi che i data files siano stati generati
 #np:  64 d:   8 si:   0.1 sv: 0.0125 w: 1.25 iters:  250
 #np: 735 d: 125 si: 0.006 sv: 0.0008 w: 0.08 iters:  750
 #np: 768 d: 256 si: 0.003 sv: 0.0004 w: 0.04 iters: 1250
@@ -59,12 +58,12 @@ exec(){
 	kind=$(printf "%s%s" $a "c");
 	arch=$(printf "%s" $a | sed s/omp//g);
 	omp=$(printf "%s" $a | sed s/[^omp]//g);
+	kindc=$(printf "%s%s" $arch "c" $omp);
 	r=$(printf "../../data/rand%s_%s_%s_%s.ds2" $arch $d $np $it);
 	c=$(printf "../../data/coeff%s_%s.ds2" $arch $d);
 	s=$(printf "../../data/sol%s_%s_%s_%s.ds2" $arch $d $np $it);
 	x=$(printf "../../data/x%s_%s_%s.ds2" $arch $d $np);
 	xh=$(printf "xh%s_%s_%s_%s.ds2" $arch $d $np $it);
-
 	found=0;
 	if [[ -f $r ]]; then
 		if [[ -f $c ]]; then
@@ -85,22 +84,25 @@ exec(){
 	fi;
 	
 	if [[ $found -eq 0 ]]; then
-		exit;
+		return;
 	fi;
-		
 	START_TIME=$(date +%s%3N);
-	if [[ -f ./fss$kind ]]; then
+	f=$(printf "./fss$kind");
+	if [[ -f $(printf "./fss$kindc") ]]; then
+		f=$(printf "./fss$kindc");
+	fi;
+	if [[ -f $f ]]; then
 		if [[ $# -eq 7 ]]; then
-			if [[ silent -eq 0 ]]; then printf "timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it\n"; fi;
-			timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it;
+			if [[ silent -eq 0 ]]; then printf "timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it\n"; fi;
+			timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it;
 			e=$?;
 		elif [[ $# -eq 8 ]]; then
-			if [[ silent -eq 0 ]]; then printf "timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8\n"; fi;
-			timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8;
+			if [[ silent -eq 0 ]]; then printf "timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8\n"; fi;
+			timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8;
 			e=$?;
 		else
-			if [[ silent -eq 0 ]]; then printf "timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8 $9\n"; fi;
-			timeout $tout ./fss$kind -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8 $9;
+			if [[ silent -eq 0 ]]; then printf "timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8 $9\n"; fi;
+			timeout $tout $f -c $c -r $r -x $x -np $np -si $si -sv $sv -w $w -it $it $8 $9;
 			e=$?;
 		fi;
 		if [[ silent -eq 0 ]]; then if [[ $e -eq 124 ]]; then printf "Timeout\n"; fi; fi;
@@ -149,6 +151,9 @@ for g in $groups; do
 		d=${dims[$i]};
 		np=${nps[$i]};
 		it=${its[$i]};
+		si=${sis[$i]};
+		sv=${svs[$i]};
+		w=${ws[$i]};
 		j=0;
 		while [[ $j -lt ${#archs[@]} ]]; do
 			a=${archs[$j]};
