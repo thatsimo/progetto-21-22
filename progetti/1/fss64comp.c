@@ -135,12 +135,7 @@ void find_and_assign_minimum(params* input, support* sup) {
 	int k = 0;
 	type min_f = sup->f_curr[0];
 
-	for (int i = 0; i<input->np; i++) {
-		if (sup->f_curr[i] < min_f) {
-			min_f = sup->f_curr[i];
-			k = i;
-		}
-	}
+	min_vector_64(sup->f_curr, input->np, &min_f);
 	
 	printf("Valore ottimo : %f\n", min_f);
 
