@@ -137,7 +137,7 @@ void find_and_assign_minimum(params* input, support* sup) {
 
 	min_vector_32(sup->f_curr, input->np, &min_f);
 	
-	printf("Valore ottimo : %f\n", min_f);
+	//printf("Valore ottimo : %f\n", min_f);
 
 	input->xh = alloc_vector(input->d);
 
